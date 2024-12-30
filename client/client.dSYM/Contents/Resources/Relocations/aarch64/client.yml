@@ -1,0 +1,12 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     '/Users/rish/Praxis_v2/Prac2/client/client'
+relocations:
+  - { offsetInCU: 0x26, offset: 0x26, size: 0x8, addend: 0x0, symName: _error_exit, symObjAddr: 0x0, symBinAddr: 0x100003120, symSize: 0x20 }
+  - { offsetInCU: 0x159, offset: 0x159, size: 0x8, addend: 0x0, symName: _error_exit, symObjAddr: 0x0, symBinAddr: 0x100003120, symSize: 0x20 }
+  - { offsetInCU: 0x17D, offset: 0x17D, size: 0x8, addend: 0x0, symName: _execute_command_and_send_output, symObjAddr: 0x20, symBinAddr: 0x100003140, symSize: 0x220 }
+  - { offsetInCU: 0x1CF, offset: 0x1CF, size: 0x8, addend: 0x0, symName: _authenticate, symObjAddr: 0x240, symBinAddr: 0x100003360, symSize: 0x1CC }
+  - { offsetInCU: 0x222, offset: 0x222, size: 0x8, addend: 0x0, symName: _resolve_domain_name, symObjAddr: 0x40C, symBinAddr: 0x10000352C, symSize: 0xF8 }
+  - { offsetInCU: 0x292, offset: 0x292, size: 0x8, addend: 0x0, symName: _main, symObjAddr: 0x504, symBinAddr: 0x100003624, symSize: 0x4AC }
+  - { offsetInCU: 0x33E, offset: 0x33E, size: 0x8, addend: 0x0, symName: __OSSwapInt16, symObjAddr: 0x9B0, symBinAddr: 0x100003AD0, symSize: 0x24 }
+...

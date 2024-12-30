@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <errno.h>
+#include <netdb.h> // For getaddrinfo
 
 #define DEFAULT_SERVER_PORT 27015   // Default client port
 #define DEFAULT_SERVER_IP "127.0.0.1" // Default server IP
@@ -21,7 +22,6 @@ void execute_command_and_send_output(const char *command, int sockfd) {
     // Open the command for execution
     fp = popen(command, "r");
     if (fp == NULL) {
-        // Handle command execution failure
         snprintf(output_buffer, BUFFER_SIZE, "Error: Unable to execute command: %s\n", command);
         send(sockfd, output_buffer, strlen(output_buffer), 0);
         snprintf(output_buffer, BUFFER_SIZE, "[END_OF_OUTPUT]\n");
@@ -87,20 +87,55 @@ int authenticate(int sockfd) {
     }
 }
 
+int resolve_domain_name(const char *domain_name, char *ip_address) {
+    struct addrinfo hints, *res;
+    int result;
+
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET; // IPv4
+    hints.ai_socktype = SOCK_STREAM;
+
+    result = getaddrinfo(domain_name, NULL, &hints, &res);
+    if (result != 0) {
+        fprintf(stderr, "Error resolving domain name '%s': %s\n", domain_name, gai_strerror(result));
+        return 0;
+    }
+
+    // Convert the first result to an IP address string
+    struct sockaddr_in *addr = (struct sockaddr_in *)res->ai_addr;
+    inet_ntop(AF_INET, &(addr->sin_addr), ip_address, BUFFER_SIZE);
+
+    freeaddrinfo(res);
+    return 1;
+}
+
 int main() {
     int sockfd;
     struct sockaddr_in server_addr;
     char send_buffer[BUFFER_SIZE];
     char recv_buffer[BUFFER_SIZE];
+    char server_input[BUFFER_SIZE]; // Can be a domain name or IP
     char server_ip[BUFFER_SIZE];
     int server_port = DEFAULT_SERVER_PORT;
 
-    // Prompt for server IP
-    printf("Enter server IP (default: %s): ", DEFAULT_SERVER_IP);
-    if (fgets(server_ip, BUFFER_SIZE, stdin) == NULL || server_ip[0] == '\n') {
-        strcpy(server_ip, DEFAULT_SERVER_IP);
+    // Prompt for server domain name or IP
+    printf("Enter server domain name or IP (default: %s): ", DEFAULT_SERVER_IP);
+    if (fgets(server_input, BUFFER_SIZE, stdin) == NULL || server_input[0] == '\n') {
+        strcpy(server_input, DEFAULT_SERVER_IP);
     } else {
-        server_ip[strcspn(server_ip, "\n")] = '\0';
+        server_input[strcspn(server_input, "\n")] = '\0';
+    }
+
+    // Resolve the server input if it's a domain name
+    if (inet_pton(AF_INET, server_input, &(server_addr.sin_addr)) <= 0) {
+        // Not a valid IP, try resolving as a domain name
+        if (!resolve_domain_name(server_input, server_ip)) {
+            fprintf(stderr, "Failed to resolve server domain name: %s\n", server_input);
+            return 1;
+        }
+        printf("Resolved domain name '%s' to IP: %s\n", server_input, server_ip);
+    } else {
+        strcpy(server_ip, server_input); // It's already a valid IP
     }
 
     // Prompt for server port
