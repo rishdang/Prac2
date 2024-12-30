@@ -18,25 +18,67 @@ void execute_command_and_send_output(const char *command, int sockfd) {
     char output_buffer[BUFFER_SIZE];
     FILE *fp;
 
-    // Open the command for reading
     fp = popen(command, "r");
     if (fp == NULL) {
         snprintf(output_buffer, BUFFER_SIZE, "Failed to execute command: %s\n", command);
         send(sockfd, output_buffer, strlen(output_buffer), 0);
+        snprintf(output_buffer, BUFFER_SIZE, "[END_OF_OUTPUT]\n");
+        send(sockfd, output_buffer, strlen(output_buffer), 0);  // Ensure end marker is sent even on failure
         return;
     }
 
     // Read command output line by line and send it to the server
     while (fgets(output_buffer, sizeof(output_buffer), fp) != NULL) {
-        send(sockfd, output_buffer, strlen(output_buffer), 0);
+        if (send(sockfd, output_buffer, strlen(output_buffer), 0) < 0) {
+            // Stop sending if the connection is broken
+            perror("Connection broken while sending output");
+            break;
+        }
+        usleep(1000);  // Add slight delay for real-time processing
     }
 
-    // Close the command stream
     pclose(fp);
 
-    // Indicate the command has finished
-    snprintf(output_buffer, BUFFER_SIZE, "[Command execution completed]\n");
+    // Send the end marker to indicate completion of output
+    snprintf(output_buffer, BUFFER_SIZE, "[END_OF_OUTPUT]\n");
     send(sockfd, output_buffer, strlen(output_buffer), 0);
+}
+
+int authenticate(int sockfd) {
+    char password[BUFFER_SIZE];
+    char recv_buffer[BUFFER_SIZE];
+    ssize_t received;
+
+    // Prompt user for password
+    printf("Enter server password: ");
+    if (fgets(password, BUFFER_SIZE, stdin) == NULL) {
+        fprintf(stderr, "Failed to read password.\n");
+        return 0;
+    }
+
+    password[strcspn(password, "\n")] = '\0'; // Remove newline character
+
+    // Send password to server
+    if (send(sockfd, password, strlen(password), 0) < 0) {
+        perror("Failed to send password");
+        return 0;
+    }
+
+    // Wait for authentication response
+    received = recv(sockfd, recv_buffer, BUFFER_SIZE - 1, 0);
+    if (received < 0) {
+        perror("Failed to receive authentication response");
+        return 0;
+    }
+
+    recv_buffer[received] = '\0';
+    if (strcmp(recv_buffer, "REMOTE_SHELL_CONFIRMED\n") == 0) {
+        printf("Authentication successful.\n");
+        return 1;
+    } else {
+        printf("Authentication failed: %s\n", recv_buffer);
+        return 0;
+    }
 }
 
 int main() {
@@ -85,6 +127,12 @@ int main() {
         error_exit("Connection to server failed");
     }
     printf("Connected to server at %s:%d\n", server_ip, server_port);
+
+    // Authenticate before proceeding
+    if (!authenticate(sockfd)) {
+        close(sockfd);
+        return 1;
+    }
 
     // Main loop for receiving commands and sending output
     while (1) {
