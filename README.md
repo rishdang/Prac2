@@ -3,7 +3,21 @@ Too many comments, AI assisted (thanks, Co-Pilot) but not AI written. I observed
 
 Architecture : 
 
-Main server runs from Prac2_Server.py. It is a plugin based, highly modular C2. The tree looks like this :
+Main server runs from Prac2_Server.py. It is a plugin based, highly modular C2. 
+
+Three roles :
+
+```
+LOCAL ones
+--> Admin works on port 9999 or the one you wish to define.
+--> Operators works on port 20022, will fix it to a different port later.
+
+REMOTE or C2 one
+--> works on port 27015 or a custom one, server will ask you for it.
+--> default C2 authentication is password based, will fix it later to a timed hash based one. Default password is "mysecretpass1" without quotes
+```
+The code tree looks like this :
+
 ```
 Prac2/
 ├── Prac2_Server.py
