@@ -33,13 +33,16 @@ Prac2/
 │   └── client_management.py
 |   └── etc.. etc..
 └── capabilities/
-    ├── __init__.py
-    ├── multi_client_support.py
-    ├── tls_support.py
-    └── <other_plugins etc etc>.py
+|   ├── __init__.py
+|   ├── multi_client_support.py
+|   ├── tls_support.py
+|   └── <other_plugins etc etc>.py
 └── client/
-    ├──client.c
-    └── etc etc..
+|   ├──client.c
+|   └── etc etc..
+|
+└── tests/
+    └── unit tests
 ```
 PYTHON based Server 
 ```
