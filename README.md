@@ -4,7 +4,7 @@ Too many comments, AI assisted (thanks, Co-Pilot) but not AI written. I observed
 Architecture : 
 
 Main server runs from Prac2_Server.py. It is a plugin based, highly modular C2. The tree looks like this :
-
+```
 Prac2/
 ├── Prac2_Server.py
 ├── server_code/ 
@@ -22,16 +22,19 @@ Prac2/
 └── client/
     ├──client.c
     └── etc etc..
-
+```
 PYTHON based Server 
+```
 └── Server code consists of banner for ascii art and MOTD if you wish. 
 --> client_commands consists of command for running at client end, to be honest, it seemed like a good idea at first but it is not. I may combine it with client_management. Read on..
 --> client_management is the actual place where client communication happens, this is filled with too many comments I wrote to understand and remember what I am doing.
 --> admin_server consists of admin code for running the server, also seemed lie a good idea at first but I may combine and refactor it.
-
+```
+```
 └── capabilities consists of modular plugins, and extensions via which you can extend the C2.
-
+```
 C based Client.
+```
 └── client consists of POSIX compliant C code which can interact with server and provides command execution capabilities.
-
+```
 I know a lot can be refactored here, but at this point I just want to see how far I can push this from a concept PoV. Consider this as a hobby C2 code so that I can polish my rusty C and Python skills along with paradigms.
