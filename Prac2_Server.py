@@ -24,12 +24,13 @@ class MainServer:
     """
     Main server class that:
       - Discovers/loads plugins from 'capabilities/'
-      - Holds references to discovered and enabled plugins (ENABLED_PLUGINS)
-      - Accepts client connections on MAIN_PORT
-      - Runs the Admin Server on ADMIN_PORT
-      - Provides list_plugins() and get_status() for admin usage
-      - Coordinates with client_management (operator shell) and client_commands
-      - Appropriately calls on_connection_accepted or on_command for loaded capabilities
+      - Maintains references to discovered (DISCOVERED_PLUGINS) and enabled (ENABLED_PLUGINS) plugins
+      - Accepts client connections on MAIN_PORT (auto-increment if in use)
+      - Runs the Admin Server on ADMIN_PORT (also auto-increment)
+      - Coordinates with:
+          * client_management (operator shell, not a plugin)
+          * client_commands (authentication + server console commands)
+      - Preserves banner logic and multi_client_support.
     """
 
     def __init__(self):
@@ -40,25 +41,24 @@ class MainServer:
         self.SERVER_PASSWORD = "mysecretpass1"  # Must be exactly 12 chars
         self.BUFFER_SIZE = 512
 
-        # Keep track of discovered & enabled plugins
+        # Track discovered & enabled plugin modules
         self.DISCOVERED_PLUGINS = {}
         self.ENABLED_PLUGINS = {}
 
-        # References
+        # References to server sockets / modules
         self.MAIN_SERVER_SOCKET = None
         self.admin_server_plugin = None
 
         # We'll attach references to server_code modules here
         self.client_commands = None
-        # Note: client_management is a *core* module, not a plugin.
-        self.client_management = None
+        self.client_management = None  # Not a plugin, just a core module
 
     # -----------------------------------------------------------
     #         CAPABILITIES LOADING & PLUGIN MANAGEMENT
     # -----------------------------------------------------------
     def load_capabilities(self, capabilities_dir: str = "capabilities"):
         """
-        Dynamically discover .py files in 'capabilities/' as plugins.
+        Dynamically discover .py files in 'capabilities/' as plugin modules.
         """
         if not os.path.isdir(capabilities_dir):
             logging.warning(f"Capabilities directory '{capabilities_dir}' not found.")
@@ -66,7 +66,7 @@ class MainServer:
 
         for filename in os.listdir(capabilities_dir):
             if filename.endswith(".py") and filename != "__init__.py":
-                module_name = filename[:-3]  # remove '.py'
+                module_name = filename[:-3]
                 module_path = f"{capabilities_dir}.{module_name}"
                 try:
                     module = importlib.import_module(module_path)
@@ -93,7 +93,6 @@ class MainServer:
         if hasattr(plugin_module, "register"):
             try:
                 new_socket = plugin_module.register(self.MAIN_SERVER_SOCKET)
-                # If plugin returns a wrapped socket (TLS, etc.), store it
                 if new_socket:
                     self.MAIN_SERVER_SOCKET = new_socket
             except Exception as e:
@@ -127,7 +126,7 @@ class MainServer:
 
     def list_plugins(self) -> str:
         """
-        Return a string listing discovered plugins and whether each is enabled/disabled.
+        Returns a string listing discovered plugins, showing which are enabled/disabled.
         """
         lines = ["Discovered plugins:"]
         for p in self.DISCOVERED_PLUGINS:
@@ -140,8 +139,8 @@ class MainServer:
     # -----------------------------------------------------------
     def get_status(self) -> str:
         """
-        Return a string describing server state (password, ports, enabled plugins, etc.).
-        Also show # of clients and operator shell info if client_management is present.
+        Returns a string describing server state: password, main/admin ports, enabled plugins.
+        Also # of connected clients & operator shell info if client_management is present.
         """
         lines = []
         lines.append(f"Server password: {self.SERVER_PASSWORD}")
@@ -152,7 +151,6 @@ class MainServer:
         else:
             lines.append("No plugins enabled.")
 
-        # If we have a client_management instance, show # connected clients and operator shell info
         if self.client_management:
             client_count = self.client_management.get_client_count()
             lines.append(f"Number of connected clients: {client_count}")
@@ -169,13 +167,24 @@ class MainServer:
     # -----------------------------------------------------------
     def run_main_server(self):
         """
-        Accept client connections on MAIN_PORT. 
-        If multi_client_support is enabled, handle concurrency in threads,
-        else handle single connection at a time.
+        Accept client connections on MAIN_PORT. If that port is in use,
+        we auto-increment the port number until we find a free one.
         """
-        self.MAIN_SERVER_SOCKET.bind((self.HOST, self.MAIN_PORT))
-        self.MAIN_SERVER_SOCKET.listen()
 
+        # Attempt to bind until successful
+        while True:
+            try:
+                self.MAIN_SERVER_SOCKET.bind((self.HOST, self.MAIN_PORT))
+                break
+            except OSError as e:
+                # Typically, e.errno == 98 means 'Address already in use' on Unix-like systems
+                if hasattr(e, 'errno') and e.errno == 98:
+                    logging.warning(f"[MainServer] Port {self.MAIN_PORT} in use. Trying next port...")
+                    self.MAIN_PORT += 1
+                else:
+                    raise e
+
+        self.MAIN_SERVER_SOCKET.listen()
         logging.info(f"[MainServer] Listening on {self.HOST}:{self.MAIN_PORT}")
 
         # Check if multi_client_support is enabled
@@ -217,7 +226,6 @@ class MainServer:
         except:
             pass
 
-
 def main():
     # Show the startup banner in the console
     show_startup_banner()
@@ -226,7 +234,7 @@ def main():
 
     server = MainServer()
 
-    # Prompt user for main/admin ports if desired
+    # Prompt user for main/admin ports (optional)
     try:
         mp = input(f"Enter main server port (default {DEFAULT_MAIN_PORT}): ").strip()
         if mp:
@@ -241,21 +249,20 @@ def main():
     except:
         logging.warning("Invalid admin port input; using default.")
 
-    # 1) Load capabilities
+    # 1) Load capabilities from 'capabilities/' (plugins)
     server.load_capabilities("capabilities")
 
     # 2) Create main server socket
     server.MAIN_SERVER_SOCKET = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    # 3) Admin server plugin (server_code/admin_server.py)
+    # 3) Admin server plugin
     from server_code.admin_server import AdminServer
     server.admin_server_plugin = AdminServer(server.HOST, server.ADMIN_PORT, server)
     server.admin_server_plugin.register()
 
-    # 4) Client management (operator shell), not a plugin in ENABLED_PLUGINS
+    # 4) Client management (operator shell). Not a plugin in ENABLED_PLUGINS
     from server_code.client_management import ClientManagement
     server.client_management = ClientManagement(server)
-    # Optional "register" method if you want to do something on creation
     server.client_management.register(server.MAIN_SERVER_SOCKET)
 
     # 5) Client commands
@@ -263,11 +270,10 @@ def main():
     server.client_commands = ClientCommands(server)
     server.MAIN_SERVER_SOCKET = server.client_commands.register(server.MAIN_SERVER_SOCKET)
 
-    # 6) Run main server
+    # 6) Run the main server
     server.run_main_server()
 
     logging.info("=== Prac2 Server has stopped. ===")
-
 
 if __name__ == "__main__":
     main()

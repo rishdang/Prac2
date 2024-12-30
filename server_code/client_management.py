@@ -28,8 +28,7 @@ class ClientManagement:
 
     def register(self, server_socket):
         """
-        If you want to do some setup upon creation. 
-        Not a plugin in ENABLED_PLUGINS, just a normal init function.
+        Perform setup upon creation. 
         """
         logging.info("[ClientManagement] Operator shell will be launched.")
         self.launch_operator_shell()
@@ -37,8 +36,7 @@ class ClientManagement:
 
     def unregister(self, server_socket):
         """
-        If you need to stop the operator shell or cleanup. 
-        (Not typical unless you want to forcibly remove it at runtime.)
+        Perform cleanup if needed, stopping the operator shell.
         """
         logging.info("[ClientManagement] Stopping operator shell.")
         self.stop_operator_shell()
@@ -56,13 +54,24 @@ class ClientManagement:
                 self.active_connection_id = conn_id
 
     def list_connections(self) -> str:
+        """
+        Lists only client connections made to the main server port (MAIN_PORT).
+        Excludes connections from admin or operator shell ports.
+        """
         with self.lock:
             if not self.connections:
                 return "No active client connections."
+            
             lines = []
             for cid, (conn, addr) in self.connections.items():
-                active_marker = " (ACTIVE)" if cid == self.active_connection_id else ""
-                lines.append(f"#{cid} -> {addr}{active_marker}")
+                # Filter connections to only those made to the MAIN_PORT
+                if conn.getsockname()[1] == self.main_server.MAIN_PORT:
+                    active_marker = " (ACTIVE)" if cid == self.active_connection_id else ""
+                    lines.append(f"#{cid} -> {addr}{active_marker}")
+            
+            if not lines:
+                return "No active client connections on the main server port."
+            
             return "\n".join(lines)
 
     def switch_connection(self, new_id: int) -> str:
@@ -136,7 +145,6 @@ class ClientManagement:
         logging.info(f"[ClientManagement] Operator shell connection from {addr}")
         with conn:
             try:
-                # Increment operator session count
                 self.operator_connections += 1
 
                 banner = get_operator_banner()
@@ -159,7 +167,6 @@ class ClientManagement:
             except Exception as e:
                 logging.error(f"[ClientManagement] Operator shell session error: {e}")
             finally:
-                # Decrement operator session count
                 self.operator_connections -= 1
 
     def _handle_operator_command(self, line: str) -> str:
@@ -219,7 +226,7 @@ class ClientManagement:
 
     def get_operator_shell_info(self) -> str:
         """
-        Returns info about the operator shell: port, status, # of operator sessions.
+        Return info about the operator shell: port, status, # of operator sessions.
         """
         status = f"Operator Shell Port: {self.operator_shell_port}"
         running_str = "RUNNING" if self.running_shell else "STOPPED"

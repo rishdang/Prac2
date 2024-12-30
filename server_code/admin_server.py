@@ -8,15 +8,11 @@ from server_code.banner import get_admin_banner
 class AdminServer:
     """
     The admin server runs on a separate port, letting an admin connect
-    to run commands like 'status', 'list', 'enable <plugin>', etc.
+    to run commands like 'status', 'list connections', 'enable <plugin>', etc.
+    If the desired port (default 9999) is taken, we auto-increment until we find a free one.
     """
 
     def __init__(self, host: str, port: int, main_server):
-        """
-        :param host: IP or hostname to bind the admin server
-        :param port: port for admin server
-        :param main_server: reference to the MainServer instance
-        """
         self.host = host
         self.port = port
         self.main_server = main_server
@@ -25,13 +21,26 @@ class AdminServer:
 
     def register(self):
         """
-        Start the Admin server in a background thread.
+        Start the Admin server in a background thread,
+        auto-incrementing 'self.port' if needed.
         """
         logging.info("[AdminServer] Initializing admin server plugin...")
         self.running = True
 
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server_socket.bind((self.host, self.port))
+
+        while True:
+            try:
+                self.server_socket.bind((self.host, self.port))
+                break
+            except OSError as e:
+                # On Unix-likes, errno=98 => 'Address already in use'
+                if hasattr(e, 'errno') and e.errno == 98:
+                    logging.warning(f"[AdminServer] Port {self.port} in use. Trying next port...")
+                    self.port += 1
+                else:
+                    raise e
+
         self.server_socket.listen()
         logging.info(f"[AdminServer] Listening on {self.host}:{self.port}")
 
@@ -40,9 +49,6 @@ class AdminServer:
         return self.server_socket
 
     def unregister(self):
-        """
-        Stop the admin server and close the socket if necessary.
-        """
         logging.info("[AdminServer] Shutting down admin server plugin...")
         self.running = False
         if self.server_socket:
@@ -72,7 +78,7 @@ class AdminServer:
         logging.info(f"[AdminServer] Admin connection from {addr}")
         with conn:
             try:
-                # Display admin banner
+                # Display the ASCII banner for admin
                 banner = get_admin_banner()
                 conn.sendall(banner.encode('utf-8'))
                 conn.sendall(b"\nType 'help' for commands.\n> ")
@@ -92,8 +98,9 @@ class AdminServer:
 
     def _handle_admin_command(self, cmd_line: str) -> str:
         """
-        Parse and respond to admin commands. 
-        - For 'list connections', we now call self.main_server.client_management directly.
+        Parse and respond to admin commands.
+        Uses self.main_server for status, plugin mgmt, etc.
+        Directly calls self.main_server.client_management for 'list connections'.
         """
         if not cmd_line:
             return ""
@@ -114,41 +121,46 @@ class AdminServer:
                 "  regen_ssl_certs         - Regenerate TLS certs and reload plugin\n"
                 "  exit / quit             - Close this admin session"
             )
+
         elif cmd == "status":
             return self.main_server.get_status()
+
         elif cmd == "list":
-            # check if user typed 'list connections'
             if len(parts) == 2 and parts[1].lower() == "connections":
-                # Directly call self.main_server.client_management
+                # Directly call the client_management object
                 cm = self.main_server.client_management
                 if cm and hasattr(cm, "list_connections"):
                     return cm.list_connections()
                 else:
-                    return "client_management is not available or lacks list_connections."
+                    return "client_management is not available or no list_connections method."
             else:
-                # normal list: discovered vs enabled plugins
                 return self.main_server.list_plugins()
+
         elif cmd == "enable" and len(parts) == 2:
             plugin_name = parts[1]
             self.main_server.enable_plugin(plugin_name)
             return f"Plugin '{plugin_name}' enabled."
+
         elif cmd == "disable" and len(parts) == 2:
             plugin_name = parts[1]
             self.main_server.disable_plugin(plugin_name)
             return f"Plugin '{plugin_name}' disabled."
+
         elif cmd == "change" and len(parts) >= 3 and parts[1].lower() == "pass":
             old_pass = self.main_server.SERVER_PASSWORD
             new_pass = parts[2]
             self.main_server.SERVER_PASSWORD = new_pass
             return f"Password changed from '{old_pass}' to '{new_pass}'"
+
         elif cmd == "regen_ssl_certs":
             return self._regen_ssl_certs()
+
         else:
             return f"Unknown command '{cmd_line}'. Type 'help' for usage."
 
     def _regen_ssl_certs(self) -> str:
         """
-        If TLS plugin is enabled, call regenerate_certs(), then re-register the plugin.
+        If TLS plugin is enabled, call regenerate_certs() then re-register.
         """
         tls_plugin = self.main_server.ENABLED_PLUGINS.get("tls_support", None)
         if not tls_plugin:
