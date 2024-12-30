@@ -1,0 +1,10 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     '/Users/rish/Praxis_v2/Prac2/client/client'
+relocations:
+  - { offsetInCU: 0x26, offset: 0x26, size: 0x8, addend: 0x0, symName: _error_exit, symObjAddr: 0x0, symBinAddr: 0x1000037A0, symSize: 0x20 }
+  - { offsetInCU: 0x87, offset: 0x87, size: 0x8, addend: 0x0, symName: _error_exit, symObjAddr: 0x0, symBinAddr: 0x1000037A0, symSize: 0x20 }
+  - { offsetInCU: 0xAB, offset: 0xAB, size: 0x8, addend: 0x0, symName: _launch_shell, symObjAddr: 0x20, symBinAddr: 0x1000037C0, symSize: 0x50 }
+  - { offsetInCU: 0xCF, offset: 0xCF, size: 0x8, addend: 0x0, symName: _main, symObjAddr: 0x70, symBinAddr: 0x100003810, symSize: 0x4EC }
+  - { offsetInCU: 0x17D, offset: 0x17D, size: 0x8, addend: 0x0, symName: __OSSwapInt16, symObjAddr: 0x55C, symBinAddr: 0x100003CFC, symSize: 0x24 }
+...

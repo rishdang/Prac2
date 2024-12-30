@@ -83,6 +83,9 @@ class ClientManagement:
                 return f"Connection #{new_id} does not exist."
 
     def close_connection(self, cid: int) -> str:
+        """
+        Close and clean up a specific client connection by ID.
+        """
         with self.lock:
             if cid not in self.connections:
                 return f"No connection #{cid} found."
@@ -92,10 +95,34 @@ class ClientManagement:
             except:
                 pass
             del self.connections[cid]
-            logging.info(f"[ClientManagement] Closed connection #{cid} from {addr}.")
             if self.active_connection_id == cid:
                 self.active_connection_id = None
+            logging.info(f"[ClientManagement] Closed connection #{cid} from {addr}.")
             return f"Connection #{cid} closed."
+
+    def _run_on_active_client(self, command_str: str) -> str:
+        """
+        Sends a command to the currently active client connection.
+        Handles errors and cleans up disconnected clients.
+        """
+        with self.lock:
+            if not self.active_connection_id:
+                return "No active client selected."
+            if self.active_connection_id not in self.connections:
+                return f"Active client (#{self.active_connection_id}) not found."
+
+            conn, addr = self.connections[self.active_connection_id]
+
+        try:
+            conn.sendall(command_str.encode('utf-8'))
+            return f"Sent command to client #{self.active_connection_id}: {command_str}"
+        except (BrokenPipeError, ConnectionResetError) as e:
+            with self.lock:
+                del self.connections[self.active_connection_id]
+                self.active_connection_id = None
+            return f"Failed to send command to client #{self.active_connection_id}: {e}"
+        except Exception as e:
+            return f"An unexpected error occurred: {e}"
 
     # -------------------- OPERATOR SHELL --------------------
 
@@ -153,6 +180,7 @@ class ClientManagement:
                 while True:
                     data = conn.recv(4096)
                     if not data:
+                        logging.info(f"[ClientManagement] Operator shell disconnected from {addr}")
                         break
                     line = data.decode(errors='replace').strip()
                     if not line:
@@ -170,6 +198,9 @@ class ClientManagement:
                 self.operator_connections -= 1
 
     def _handle_operator_command(self, line: str) -> str:
+        """
+        Handle commands sent to the operator shell.
+        """
         parts = line.split()
         if not parts:
             return ""
@@ -179,7 +210,7 @@ class ClientManagement:
         if cmd in ("help", "?"):
             return (
                 "Operator Shell Commands:\n"
-                "  help / ?               - This help.\n"
+                "  help / ?               - Show this help.\n"
                 "  list                   - List connected clients.\n"
                 "  connect <id>           - Switch active client session.\n"
                 "  run <command>          - Run a command on the ACTIVE client.\n"
@@ -206,33 +237,3 @@ class ClientManagement:
             return "Goodbye."
         else:
             return f"Unknown command '{line}'. Type 'help' for usage."
-
-    def _run_on_active_client(self, command_str: str) -> str:
-        with self.lock:
-            if not self.active_connection_id:
-                return "No active client selected."
-            if self.active_connection_id not in self.connections:
-                return f"Active client (#{self.active_connection_id}) not found."
-
-            conn, addr = self.connections[self.active_connection_id]
-
-        try:
-            conn.sendall(command_str.encode('utf-8'))
-            return f"Sent command to client #{self.active_connection_id}: {command_str}"
-        except Exception as e:
-            return f"Failed to send command to client #{self.active_connection_id}: {e}"
-
-    # --------------------- STATUS HELPERS ---------------------
-
-    def get_operator_shell_info(self) -> str:
-        """
-        Return info about the operator shell: port, status, # of operator sessions.
-        """
-        status = f"Operator Shell Port: {self.operator_shell_port}"
-        running_str = "RUNNING" if self.running_shell else "STOPPED"
-        status += f" (Status: {running_str}), Operator connections: {self.operator_connections}"
-        return status
-
-    def get_client_count(self) -> int:
-        with self.lock:
-            return len(self.connections)
