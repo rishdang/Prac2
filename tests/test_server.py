@@ -1,16 +1,19 @@
 # basic auth tests
 import unittest
-from server import authenticate_client
+from server_code.admin_server import validate_admin_credentials
 
-class TestServer(unittest.TestCase):
-    def test_authenticate_client(self):
-        # Mock client socket response
-        mock_client = type('MockSocket', (object,), {"recv": lambda _: b"REMOTE_SHELL_CONFIRMED\n"})
-        self.assertTrue(authenticate_client(mock_client))
+class TestAdminServer(unittest.TestCase):
+    def test_valid_credentials(self):
+        self.assertTrue(validate_admin_credentials("admin", "secure_password"))
 
-    def test_authenticate_client_fail(self):
-        mock_client = type('MockSocket', (object,), {"recv": lambda _: b"AUTH_FAILED\n"})
-        self.assertFalse(authenticate_client(mock_client))
+    def test_invalid_username(self):
+        self.assertFalse(validate_admin_credentials("user", "secure_password"))
+
+    def test_invalid_password(self):
+        self.assertFalse(validate_admin_credentials("admin", "wrong_password"))
+
+    def test_empty_credentials(self):
+        self.assertFalse(validate_admin_credentials("", ""))
 
 if __name__ == "__main__":
     unittest.main()
