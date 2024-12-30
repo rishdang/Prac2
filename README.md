@@ -15,6 +15,7 @@ LOCAL ones
 REMOTE or C2 one
 --> works on port 27015 or a custom one, server will ask you for it.
 --> default C2 authentication is password based, will fix it later to a timed hash based one. Default password is "mysecretpass1" without quotes
+--> Usage: ./client [-i <ip/domain>] [-p <port>] [-w <password>]
 ```
 The code tree looks like this :
 
