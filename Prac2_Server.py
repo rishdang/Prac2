@@ -17,7 +17,7 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 
-# We import our startup banner from server_code/banner
+# import banner
 from server_code.banner import show_startup_banner
 
 class MainServer:

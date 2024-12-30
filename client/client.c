@@ -18,30 +18,36 @@ void execute_command_and_send_output(const char *command, int sockfd) {
     char output_buffer[BUFFER_SIZE];
     FILE *fp;
 
+    // Open the command for execution
     fp = popen(command, "r");
     if (fp == NULL) {
-        snprintf(output_buffer, BUFFER_SIZE, "Failed to execute command: %s\n", command);
+        // Handle command execution failure
+        snprintf(output_buffer, BUFFER_SIZE, "Error: Unable to execute command: %s\n", command);
         send(sockfd, output_buffer, strlen(output_buffer), 0);
         snprintf(output_buffer, BUFFER_SIZE, "[END_OF_OUTPUT]\n");
         send(sockfd, output_buffer, strlen(output_buffer), 0);  // Ensure end marker is sent even on failure
         return;
     }
 
-    // Read command output line by line and send it to the server
+    // Read the output line by line
     while (fgets(output_buffer, sizeof(output_buffer), fp) != NULL) {
+        // Send each line of output to the server
         if (send(sockfd, output_buffer, strlen(output_buffer), 0) < 0) {
-            // Stop sending if the connection is broken
-            perror("Connection broken while sending output");
+            perror("Error: Connection broken while sending command output");
             break;
         }
-        usleep(1000);  // Add slight delay for real-time processing
     }
 
-    pclose(fp);
+    // Close the command stream
+    if (pclose(fp) == -1) {
+        perror("Error: Failed to close command stream");
+    }
 
-    // Send the end marker to indicate completion of output
+    // Send the end-of-output marker
     snprintf(output_buffer, BUFFER_SIZE, "[END_OF_OUTPUT]\n");
-    send(sockfd, output_buffer, strlen(output_buffer), 0);
+    if (send(sockfd, output_buffer, strlen(output_buffer), 0) < 0) {
+        perror("Error: Failed to send end-of-output marker");
+    }
 }
 
 int authenticate(int sockfd) {
