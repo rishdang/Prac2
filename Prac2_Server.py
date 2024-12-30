@@ -24,11 +24,12 @@ class MainServer:
     """
     Main server class that:
       - Discovers/loads plugins from 'capabilities/'
-      - Holds references to discovered and enabled plugins
+      - Holds references to discovered and enabled plugins (ENABLED_PLUGINS)
       - Accepts client connections on MAIN_PORT
       - Runs the Admin Server on ADMIN_PORT
       - Provides list_plugins() and get_status() for admin usage
       - Coordinates with client_management (operator shell) and client_commands
+      - Appropriately calls on_connection_accepted or on_command for loaded capabilities
     """
 
     def __init__(self):
@@ -49,6 +50,7 @@ class MainServer:
 
         # We'll attach references to server_code modules here
         self.client_commands = None
+        # Note: client_management is a *core* module, not a plugin.
         self.client_management = None
 
     # -----------------------------------------------------------
@@ -139,7 +141,7 @@ class MainServer:
     def get_status(self) -> str:
         """
         Return a string describing server state (password, ports, enabled plugins, etc.).
-        Also show # of clients and operator shell info if client_management is enabled.
+        Also show # of clients and operator shell info if client_management is present.
         """
         lines = []
         lines.append(f"Server password: {self.SERVER_PASSWORD}")
@@ -150,14 +152,15 @@ class MainServer:
         else:
             lines.append("No plugins enabled.")
 
-        cm_plugin = self.ENABLED_PLUGINS.get("client_management", None)
-        if cm_plugin:
-            client_count = cm_plugin.get_client_count()
+        # If we have a client_management instance, show # connected clients and operator shell info
+        if self.client_management:
+            client_count = self.client_management.get_client_count()
             lines.append(f"Number of connected clients: {client_count}")
-            shell_info = cm_plugin.get_operator_shell_info()
+
+            shell_info = self.client_management.get_operator_shell_info()
             lines.append(shell_info)
         else:
-            lines.append("ClientManagement plugin is not enabled.")
+            lines.append("client_management is not set up.")
 
         return "\n".join(lines)
 
@@ -175,6 +178,7 @@ class MainServer:
 
         logging.info(f"[MainServer] Listening on {self.HOST}:{self.MAIN_PORT}")
 
+        # Check if multi_client_support is enabled
         is_multi = ("multi_client_support" in self.ENABLED_PLUGINS)
         if is_multi:
             logging.info("[MainServer] Multi-client mode is ENABLED.")
@@ -243,14 +247,15 @@ def main():
     # 2) Create main server socket
     server.MAIN_SERVER_SOCKET = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    # 3) Admin server plugin
+    # 3) Admin server plugin (server_code/admin_server.py)
     from server_code.admin_server import AdminServer
     server.admin_server_plugin = AdminServer(server.HOST, server.ADMIN_PORT, server)
     server.admin_server_plugin.register()
 
-    # 4) Client management (operator shell)
+    # 4) Client management (operator shell), not a plugin in ENABLED_PLUGINS
     from server_code.client_management import ClientManagement
     server.client_management = ClientManagement(server)
+    # Optional "register" method if you want to do something on creation
     server.client_management.register(server.MAIN_SERVER_SOCKET)
 
     # 5) Client commands

@@ -10,6 +10,7 @@ from server_code.banner import get_operator_banner
 class ClientManagement:
     """
     Manages client connections + an Operator Shell on port 20022.
+    This is *not* stored in ENABLED_PLUGINS. It's a core module that MainServer calls.
     """
 
     def __init__(self, main_server):
@@ -23,15 +24,23 @@ class ClientManagement:
         self.operator_socket = None
         self.running_shell = False
         self.operator_shell_port = 20022
-        self.operator_connections = 0  # number of active operator sessions
+        self.operator_connections = 0  # track how many operator sessions
 
     def register(self, server_socket):
-        logging.info("[ClientManagement] Plugin registered.")
+        """
+        If you want to do some setup upon creation. 
+        Not a plugin in ENABLED_PLUGINS, just a normal init function.
+        """
+        logging.info("[ClientManagement] Operator shell will be launched.")
         self.launch_operator_shell()
         return server_socket
 
     def unregister(self, server_socket):
-        logging.info("[ClientManagement] Plugin unregistered.")
+        """
+        If you need to stop the operator shell or cleanup. 
+        (Not typical unless you want to forcibly remove it at runtime.)
+        """
+        logging.info("[ClientManagement] Stopping operator shell.")
         self.stop_operator_shell()
         return server_socket
 
@@ -150,22 +159,25 @@ class ClientManagement:
             except Exception as e:
                 logging.error(f"[ClientManagement] Operator shell session error: {e}")
             finally:
-                # Decrement when session ends
+                # Decrement operator session count
                 self.operator_connections -= 1
 
     def _handle_operator_command(self, line: str) -> str:
         parts = line.split()
+        if not parts:
+            return ""
+
         cmd = parts[0].lower()
 
         if cmd in ("help", "?"):
             return (
                 "Operator Shell Commands:\n"
-                "  help / ?       - This help.\n"
-                "  list           - List connected clients.\n"
-                "  connect <id>   - Switch active client session.\n"
-                "  run <command>  - Run a command on the ACTIVE client.\n"
-                "  close <id>     - Close a client connection by ID.\n"
-                "  exit / quit    - Exit operator shell.\n"
+                "  help / ?               - This help.\n"
+                "  list                   - List connected clients.\n"
+                "  connect <id>           - Switch active client session.\n"
+                "  run <command>          - Run a command on the ACTIVE client.\n"
+                "  close <id>             - Close a client connection by ID.\n"
+                "  exit / quit            - Exit operator shell.\n"
             )
         elif cmd == "list":
             return self.list_connections()
