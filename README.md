@@ -1,6 +1,12 @@
 Pra-C2 is a thing that I wrote just for lulz, during a long winter night. The code is somewhat messy, but it works.
 Too many comments, AI assisted (thanks, Co-Pilot) but not AI written. I observed a lot of issues in AI code and found it introduced new issues instead of fixing some. 
 
+Proposed Usecases : 
+
+Bored of existing C2? Want to test your EDR capabilities? Need a somewhat working codebase for your ToyC2? Need to scare the blueteam with an unknown C2 which no one uses? Getting a good night sleep knowing your existing C2 works fine? 
+
+Well you'have come to the right place.
+
 Architecture : 
 
 Main server runs from Prac2_Server.py. It is a plugin based, highly modular C2. 
