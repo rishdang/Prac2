@@ -24,7 +24,8 @@ POSIX compliant REMOTE or C2 one
 --> Two type of clients. 
     --> One with **Very unstable** process hollowing support (client_proc_h.c) thanks to brilliant tutorial by Jeffrey Bencteux here https://www.bencteux.fr/posts/linux_process_hollowing/.
     --> And one without, but a bit more stable (client.c)
-    -- Added one experimental keylogger as well
+    --> Added one experimental keylogger as well : client_k.c
+    --> Added experimental ransomware module (currently local only) : client_r.c
 --> Usage: ./client [-i <ip/domain>] [-p <port>] [-w <password>]
 ```
 The code tree looks like this :
