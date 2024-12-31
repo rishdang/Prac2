@@ -21,14 +21,15 @@ LOCAL ones
 POSIX compliant REMOTE or C2 one
 --> works on port 27015 or a custom one, server will ask you for it.
 --> default C2 authentication is password based, will fix it later to a timed hash based one. Default password is "mysecretpass1" without quotes
---> Two type of clients. 
+
+MULTIPLE types of clients. 
     --> One with **Very unstable** process hollowing support (client_proc_h.c) thanks to brilliant tutorial by Jeffrey Bencteux here https://www.bencteux.fr/posts/linux_process_hollowing/.
     --> And one without, but a bit more stable (client.c)
     --> Added one experimental keylogger as well : client_k.c
     --> Added experimental ransomware module (currently local only) : client_r.c
 --> Usage: ./client [-i <ip/domain>] [-p <port>] [-w <password>]
 ```
-The code tree looks like this :
+The architecture/ code tree looks like this :
 
 ```
 Prac2/
@@ -48,9 +49,8 @@ Prac2/
 └── client/
 |   ├──client.c
 |   └── etc etc..
-|
 └── tests/
-    └── unit tests
+    └── unit tests (incomplete, i know)
 ```
 PYTHON based Server 
 ```
