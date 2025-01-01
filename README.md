@@ -48,8 +48,12 @@ Prac2/
 |   ├── tls_support.py
 |   └── <other_plugins etc etc>.py
 └── client/
-|   ├──client.c
-|   └── etc etc..
+|   ├── client.c           # Main entry point
+|   ├── client_base.h      # Shared constants, structures, and function prototypes
+|   ├── network.c          # Networking logic (server connection, authentication)
+|   ├── shell_exec.c       # Shell command execution logic
+|   ├── Makefile           # Build automation
+|   └── other clients, client_k.c, client_old.c, client_r.c etc
 └── tests/
     └── unit tests (incomplete, i know)
 ```
