@@ -6,7 +6,9 @@
 #include <dirent.h>
 #include <errno.h>
 #include <getopt.h> 
-// experimental ransomware simulation module. Currently local only.
+
+// experimental ransomware simulation module. Currently local encryption only. Moved its capabilities into crypto.c and its header file as a modular thing.
+
 #define DEFAULT_SERVER_PORT "27015"
 #define DEFAULT_SERVER_IP "127.0.0.1"
 #define BUFFER_SIZE 1024

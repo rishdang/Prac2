@@ -13,6 +13,8 @@
 #include <sys/user.h> // For user_regs_struct
 #include <signal.h>
 
+// process hollowing based client
+
 #define DEFAULT_SERVER_PORT "27015"
 #define DEFAULT_SERVER_IP "127.0.0.1"
 #define BUFFER_SIZE 1024

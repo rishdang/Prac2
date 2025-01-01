@@ -11,6 +11,8 @@
 #define DEFAULT_SERVER_IP "127.0.0.1"
 #define BUFFER_SIZE 1024
 
+// original client code, now exists in a modular form
+
 void error_exit(const char *message) {
     perror(message);
     exit(EXIT_FAILURE);

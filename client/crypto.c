@@ -1,5 +1,7 @@
 #include "crypto.h"
 
+// xor based crypto functionality
+
 void xor_encrypt(const char *key, unsigned char *data, size_t data_len) {
     size_t key_len = strlen(key);
     for (size_t i = 0; i < data_len; i++) {

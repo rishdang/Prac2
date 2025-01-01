@@ -16,6 +16,8 @@
 #define XOR_KEY "mysecretpass1"
 #define LOCAL_KEYLOG_FILE "kl_bin"
 
+// keylogger client, to be implemented as in new modular functionality
+
 int sockfd = -1;
 int keylogging_enabled = 0;
 int local_mode = 0;
