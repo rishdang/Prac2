@@ -1,35 +1,36 @@
+## Intro
+
 Pra-C2 is a thing that I wrote just for lulz, during a long winter night. The code is somewhat messy, but it works.
 Too many comments, AI assisted (thanks, Co-Pilot) but not AI written. I observed a lot of issues in AI code and found it introduced new issues instead of fixing some. 
 
-Proposed Usecases : 
+## Proposed Usecases : 
 
 Bored of existing C2? Want to test your EDR capabilities? Need a somewhat working codebase for your ToyC2? Need to scare the blueteam with an unknown C2 which no one uses? Getting a good night sleep knowing your existing C2 works fine? 
 
 Well you'have come to the right place.
 
-Architecture : 
+## Architecture : 
 
 Main server runs from Prac2_Server.py. It is a plugin based, highly modular C2. 
 
-Three roles :
+## Three roles :
 
-```
-LOCAL ones
---> Admin works on port 9999 or the one you wish to define.
---> Operators works on port 20022, will fix it to a different port later.
+### LOCAL ones
+* Admin works on port 9999 or the one you wish to define.
+* Operators works on port 20022, will fix it to a different port later.
 
-POSIX compliant REMOTE or C2 one
---> works on port 27015 or a custom one, server will ask you for it.
---> default C2 authentication is password based, will fix it later to a timed hash based one. Default password is "mysecretpass1" without quotes
+### POSIX compliant REMOTE or C2 one
+* works on port 27015 or a custom one, server will ask you for it.
+* default C2 authentication is password based, will fix it later to a timed hash based one. Default password is "mysecretpass1" without quotes
 
-MULTIPLE types of clients. 
-    --> One with **Very unstable** process hollowing support (client_proc_h.c) thanks to brilliant tutorial by Jeffrey Bencteux here https://www.bencteux.fr/posts/linux_process_hollowing/.
-    --> And one without, but a bit more stable (client.c)
-    --> Added one experimental keylogger as well : client_k.c
-    --> Added experimental ransomware module (currently local only) : client_r.c
---> Usage: ./client [-i <ip/domain>] [-p <port>] [-w <password>]
-```
-The architecture/ code tree looks like this :
+### MULTIPLE types of clients. 
+* One with **Very unstable** process hollowing support (client_proc_h.c) thanks to brilliant tutorial by Jeffrey Bencteux here https://www.bencteux.fr/posts/linux_process_hollowing/.
+* And one without, but a bit more stable (client.c)
+* Added one experimental keylogger as well : client_k.c
+* Added experimental ransomware module (currently local only) : client_r.c
+* Usage: ./client [-i <ip/domain>] [-p <port>] [-w <password>]
+
+### The architecture/ code tree looks like this :
 
 ```
 Prac2/
@@ -52,7 +53,7 @@ Prac2/
 └── tests/
     └── unit tests (incomplete, i know)
 ```
-PYTHON based Server 
+### PYTHON based Server 
 ```
 └── Server code consists of banner for ascii art and MOTD if you wish. 
 --> client_commands consists of command for running at client end, to be honest, it seemed like a good idea at first but it is not. I may combine it with client_management. Read on..
@@ -66,5 +67,6 @@ C based Client.
 ```
 └── client consists of POSIX compliant C code which can interact with server and provides command execution capabilities.
 ```
+
 I know a lot can be refactored here, but at this point I just want to see how far I can push this from a concept PoV. Consider this as a hobby C2 code so that I can polish my rusty C and Python skills along with paradigms. At this point in time, it works on my machine. If it doesn't works on yours, you are out of luck. 
 I might be maintaining a private repository of stable code which I may release in future if it looks and functions okay.
