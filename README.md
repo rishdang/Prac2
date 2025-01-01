@@ -53,7 +53,8 @@ Prac2/
 |   ├── network.c          # Networking logic (server connection, authentication)
 |   ├── shell_exec.c       # Shell command execution logic
 |   ├── Makefile           # Build automation
-|   └── other clients, client_k.c, client_old.c, client_r.c etc
+|   └── old clients
+|       └── old clients, client_k.c, client_old.c, client_r.c etc
 └── tests/
     └── unit tests (incomplete, i know)
 ```
