@@ -5,20 +5,22 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/ptrace.h>
 #include <signal.h>
 #include <time.h>
-#include <dirent.h>
+
+#ifdef __linux__
+#include <sys/ptrace.h>
+#endif
 
 // Function prototypes
-void anti_debug_ptrace();
-void anti_debug_proc();
-void anti_debug_timing();
-void anti_debug_signals();
-void anti_debug_ppid();
-void anti_debug_env();
-void anti_debug_checksum();
-void anti_debug_process();
-void perform_anti_debug_checks();
+void anti_debug_ptrace();     // Detect debugger via ptrace (Linux only)
+void anti_debug_proc();       // Detect debugger via /proc/self/status
+void anti_debug_timing();     // Detect debugger via timing discrepancies
+void anti_debug_signals();    // Detect debugger via signal handling
+void anti_debug_ppid();       // Detect debugger via parent process ID
+void anti_debug_env();        // Detect debugger via environment variables
+void anti_debug_checksum();   // Detect debugger via checksum verification
+void anti_debug_process();    // Detect debugger via running processes
+void perform_anti_debug_checks(); // Perform all anti-debugging checks
 
 #endif

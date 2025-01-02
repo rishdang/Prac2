@@ -1,10 +1,24 @@
 #include "anti_debug.h"
 
+#ifdef __linux__
+#include <sys/ptrace.h>
+#endif
+#include <signal.h>
+#include <time.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 void anti_debug_ptrace() {
+#ifdef __linux__
     if (ptrace(PTRACE_TRACEME, 0, NULL, NULL) == -1) {
         printf("Debugger detected via ptrace! Exiting.\n");
         exit(EXIT_FAILURE);
     }
+#else
+    printf("ptrace is not supported on this platform. Skipping ptrace check.\n");
+#endif
 }
 
 void anti_debug_proc() {
@@ -41,11 +55,13 @@ void anti_debug_timing() {
     }
 }
 
+void signal_handler(int sig) {
+    printf("Debugger detected via signal handling! Exiting.\n");
+    exit(EXIT_FAILURE);
+}
+
 void anti_debug_signals() {
-    signal(SIGTRAP, [](int sig) {
-        printf("Debugger detected via signal handling! Exiting.\n");
-        exit(EXIT_FAILURE);
-    });
+    signal(SIGTRAP, signal_handler);
     raise(SIGTRAP);
 }
 

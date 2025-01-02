@@ -1,7 +1,5 @@
 #include "crypto.h"
 
-// xor based crypto functionality
-
 void xor_encrypt(const char *key, unsigned char *data, size_t data_len) {
     size_t key_len = strlen(key);
     for (size_t i = 0; i < data_len; i++) {
@@ -53,8 +51,11 @@ void process_directory(const char *directory_path, const char *key) {
     char full_path[BUFFER_SIZE];
 
     while ((entry = readdir(dir)) != NULL) {
-        if (entry->d_type == DT_REG) { // Process regular files only
-            snprintf(full_path, BUFFER_SIZE, "%s/%s", directory_path, entry->d_name);
+        snprintf(full_path, BUFFER_SIZE, "%s/%s", directory_path, entry->d_name);
+
+        // Check if it's a regular file
+        struct stat file_stat;
+        if (stat(full_path, &file_stat) == 0 && S_ISREG(file_stat.st_mode)) {
             process_file(full_path, key);
         }
     }

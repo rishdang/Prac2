@@ -6,10 +6,6 @@ Bored of existing C2? Want to test your EDR capabilities? Need a somewhat workin
 
 Well you'have come to the right place.
 
-## Architecture : 
-
-Main server runs from Prac2_Server.py. It is a plugin based, highly modular C2. 
-
 ## Features :
 
 ### MULTIPLE types of clients. 
@@ -46,7 +42,9 @@ Main server runs from Prac2_Server.py. It is a plugin based, highly modular C2.
 * works on port 27015 or a custom one, server will ask you for it.
 * default C2 authentication is password based, will fix it later to a timed hash based one. Default password is "mysecretpass1" without quotes
 
-### The architecture/ code tree looks like this :
+## Architecture : 
+
+Main server runs from Prac2_Server.py. It is a plugin based, highly modular C2. 
 
 ```
 Prac2/
