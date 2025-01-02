@@ -20,5 +20,6 @@ void print_usage(const char *prog_name);
 const char *get_shell();
 void execute_command_and_send_output(const char *command, int sockfd);
 int authenticate(int sockfd, const char *cmd_line_password);
+void error_exit(const char *message);
 
 #endif

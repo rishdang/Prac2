@@ -1,3 +1,4 @@
+# Add remove modules (abc.c) as required.
 all: client
 
 client: client.c crypto.c anti_debug.c stealth.c postexp.c
