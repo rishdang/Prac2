@@ -22,22 +22,31 @@ void anti_debug_ptrace() {
 }
 
 void anti_debug_proc() {
-    FILE *file = fopen("/proc/self/status", "r");
-    if (!file) return;
-
-    char line[256];
-    while (fgets(line, sizeof(line), file)) {
-        if (strncmp(line, "TracerPid:", 10) == 0) {
-            int tracer_pid = atoi(line + 10);
-            if (tracer_pid != 0) {
-                printf("Debugger detected via /proc/self/status! Exiting.\n");
-                fclose(file);
-                exit(EXIT_FAILURE);
-            }
-        }
+    FILE *fp = fopen("/proc/self/status", "r");
+    if (!fp) {
+        perror("Error opening /proc/self/status");
+        return;
     }
 
-    fclose(file);
+    char line[256];
+    int tracer_pid = 0;
+    while (fgets(line, sizeof(line), fp)) {
+        if (strncmp(line, "TracerPid:", 10) == 0) {
+            tracer_pid = atoi(line + 10);
+            break;
+        }
+    }
+    fclose(fp);
+
+    if (tracer_pid != 0) {
+        // Combine with other anti-debug checks
+        if (anti_debug_timing()) { // Assume anti_debug_timing exists
+            printf("Debugger confirmed via /proc/self/status and timing! Exiting.\n");
+            exit(EXIT_FAILURE);
+        } else {
+            printf("Warning: /proc/self/status suggests a debugger, but no timing anomaly detected.\n");
+        }
+    }
 }
 
 void anti_debug_timing() {
