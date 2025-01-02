@@ -31,7 +31,7 @@ Well you'have come to the right place.
 ### C based Client.
 ```
 └── client consists of POSIX compliant C code which can interact with server and provides command execution capabilities.
-└── Modular capabilities, has basic anti-debug capabilities as well.
+└── Modular capabilities, has basic anti-debug, post exploitation and stealth capabilities as well.
 
 ```
 ### LOCAL roles
@@ -67,6 +67,7 @@ Prac2/
 |   ├── network.c               # Networking logic (server connection, authentication)
 |   ├── shell_exec.c            # Shell command execution logic
 |   ├── Makefile                # add remove things if required
+|   ├── other capability specific files.
 |   └── old clients
 |       └── old clients, client_k.c, client_old.c, client_r.c etc
 └── tests/
