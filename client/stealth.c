@@ -1,6 +1,8 @@
 #include "stealth.h"
 #include <time.h>
 #include <unistd.h> // For sleep or usleep
+// extern time_t time(time_t *t); // Trying to fix time.h by explicit declaration
+
 
 extern char **environ;
 void rename_process(const char *new_name) {
