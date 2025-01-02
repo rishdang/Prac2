@@ -30,8 +30,8 @@ int authenticate(int sockfd, const char *password) {
 
     buffer[bytes_received] = '\0'; // Null-terminate the response
 
-    // Check the server's response
-    if (strcmp(buffer, "REMOTE_SHELL_CONFIRMED") == 0) {
+    // Check if the server's response contains the confirmation message
+    if (strstr(buffer, "REMOTE_SHELL_CONFIRMED") != NULL) {
         printf("Authentication successful.\n");
         return 1;
     } else {

