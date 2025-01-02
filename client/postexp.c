@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <time.h>
 #include <arpa/inet.h>
+#include <unistd.h>
 
 static int keylog_fd = -1; // File descriptor for keylogging
 static volatile int keylogging_active = 0; // Flag for keylogging status

