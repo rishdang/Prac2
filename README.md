@@ -9,10 +9,10 @@ Well you'have come to the right place.
 ## Features :
 
 ### MULTIPLE types of clients. 
-* One with **Very unstable** process hollowing support (client_proc_h.c) thanks to brilliant tutorial by Jeffrey Bencteux here https://www.bencteux.fr/posts/linux_process_hollowing/.
 * And one without, but a bit more stable (client.c)
-* Added one experimental keylogger as well : client_k.c
-* Added experimental ransomware module (currently local only) : client_r.c
+* Added one experimental keylogger as well
+* Added experimental ransomware module (currently local only)
+* One **Very unstable** process hollowing support (client_proc_h.c) thanks to brilliant tutorial by Jeffrey Bencteux here https://www.bencteux.fr/posts/linux_process_hollowing/.
 * Usage: ./client [-i <ip/domain>] [-p <port>] [-w <password>]
 
 ### PYTHON based Server 
@@ -48,15 +48,15 @@ Main server runs from Prac2_Server.py. It is a plugin based, highly modular C2.
 
 ```
 Prac2/
-├── Prac2_Server.py
 ├── server_code/ 
 │   ├── __init__.py
+|   ├── Prac2_Server.py         # Entry point
 │   ├── admin_server.py         # Main server code
-│   ├── banner.py               # Banner
-│   ├── client_commands.py      # client commands here 
+│   ├── banner.py               
+│   ├── command_handler.py      # client commands here 
 │   └── client_management.py    # client functional management
 |   └── etc.. etc..
-└── capabilities/
+└── capabilities/               # In progress, please ignore for now. I may remove or merge it altogether
 |   ├── __init__.py
 |   ├── multi_client_support.py
 |   ├── tls_support.py
@@ -78,4 +78,4 @@ I know a lot can be refactored here, but at this point I just want to see how fa
 I might be maintaining a private repository of stable code which I may release in future if it looks and functions okay.
 
 Have inputs? Need to submit enhancements? Need some guidance? 
-Reach me out on dangwal<at>rish<dot>one.
+Reach me out on dangwal(at)rish(dot)one.
