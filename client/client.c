@@ -46,12 +46,12 @@ int main(int argc, char *argv[]) {
     int opt;
 
     // Anti-debugging measures
-    anti_debug_ptrace();
-    anti_debug_proc();
+    // anti_debug_ptrace();
+    // anti_debug_proc();
 
     // Stealth measures
-    rename_process("systemd");
-    change_cmdline("systemd");
+    // rename_process("systemp");
+    // change_cmdline("systemp");
 
     // Parse command-line arguments
     while ((opt = getopt(argc, argv, "i:p:w:e:d:k:")) != -1) {

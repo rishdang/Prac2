@@ -322,3 +322,17 @@
 2025-01-03 02:09:36 [INFO] [ClientManagement] Client 1 authenticated.
 2025-01-03 02:10:05 [ERROR] [ClientManagement] Error during session with client 1: [Errno 54] Connection reset by peer
 2025-01-03 02:10:05 [INFO] [ClientManagement] Client 1 disconnected.
+2025-01-03 03:09:59 [INFO] New connection from ('192.168.1.102', 35234)
+2025-01-03 03:09:59 [INFO] [ClientManagement] Connected by ('192.168.1.102', 35234)
+2025-01-03 03:09:59 [INFO] [Utils] Client authenticated successfully.
+2025-01-03 03:09:59 [INFO] [ClientManagement] Client 1 authenticated.
+2025-01-03 03:10:07 [INFO] [OperatorSession] Operator shell closed.
+2025-01-03 03:10:09 [INFO] Shutting down the server...
+2025-01-03 03:10:14 [INFO] Server started on 0.0.0.0:8080. Waiting for connections...
+2025-01-03 03:10:16 [INFO] New connection from ('192.168.1.102', 33698)
+2025-01-03 03:10:16 [INFO] [ClientManagement] Connected by ('192.168.1.102', 33698)
+2025-01-03 03:10:16 [INFO] [Utils] Client authenticated successfully.
+2025-01-03 03:10:16 [INFO] [ClientManagement] Client 1 authenticated.
+2025-01-03 03:11:48 [INFO] [ClientManagement] Client 1 disconnected.
+2025-01-03 03:11:48 [INFO] [ClientManagement] Client 1 disconnected.
+2025-01-03 03:11:50 [INFO] Shutting down the server...
