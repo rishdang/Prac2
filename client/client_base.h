@@ -10,7 +10,7 @@
 #include <errno.h>
 #include <getopt.h>
 
-#define DEFAULT_SERVER_PORT "27015"
+#define DEFAULT_SERVER_PORT "8080"
 #define DEFAULT_SERVER_IP "127.0.0.1"
 #define BUFFER_SIZE 1024
 

