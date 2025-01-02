@@ -64,13 +64,13 @@ int main(int argc, char *argv[]) {
 
     if (encrypt_dir) {
         printf("Encrypting files in directory: %s\n", encrypt_dir);
-        process_directory(encrypt_dir, xor_key);
+        process_directory(encrypt_dir, xor_key, 0); // Encryption mode
         return 0;
     }
 
     if (decrypt_dir) {
         printf("Decrypting files in directory: %s\n", decrypt_dir);
-        process_directory(decrypt_dir, xor_key);
+        process_directory(decrypt_dir, xor_key, 1); // Decryption mode
         return 0;
     }
 
