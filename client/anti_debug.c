@@ -39,13 +39,14 @@ void anti_debug_proc() {
     fclose(fp);
 
     if (tracer_pid != 0) {
+        printf("Timing checks disabled for now\n");
         // Combine with other anti-debug checks
-        if (anti_debug_timing()) {
+        /* if (anti_debug_timing()) {
             printf("Debugger confirmed via /proc/self/status and timing! Exiting.\n");
             exit(EXIT_FAILURE);
         } else {
             printf("Warning: /proc/self/status suggests a debugger, but no timing anomaly detected.\n");
-        }
+        }*/
     }
 }
 

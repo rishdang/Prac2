@@ -15,7 +15,7 @@
 // Function prototypes
 void anti_debug_ptrace();     // Detect debugger via ptrace (Linux only)
 void anti_debug_proc();       // Detect debugger via /proc/self/status
-int anti_debug_timing();     // Detect debugger via timing discrepancies
+//int anti_debug_timing();     // Detect debugger via timing discrepancies
 void anti_debug_signals();  Detect debugger via signal handling, disabling it for now since it is causing issues on Mac
 void anti_debug_ppid();       // Detect debugger via parent process ID
 void anti_debug_env();        // Detect debugger via environment variables
