@@ -78,5 +78,5 @@ Prac2/
 I know a lot can be refactored here, but at this point I just want to see how far I can push this from a concept PoV. Consider this as a hobby C2 code so that I can polish my rusty C and Python skills along with paradigms. At this point in time, it works on my machine. If it doesn't works on yours, you are out of luck. 
 I might be maintaining a private repository of stable code which I may release in future if it looks and functions okay.
 
-Have inputs? Need to submit enhancements? Reach me out on dangwal<at>rish<dot>one.
-Have issues? Code not compiling? Please do not reach me out on dangwal<at>rish<dot>one
+Have inputs? Need to submit enhancements? Need some guidance? 
+Reach me out on dangwal<at>rish<dot>one.
