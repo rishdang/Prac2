@@ -40,7 +40,7 @@ void anti_debug_proc() {
 
     if (tracer_pid != 0) {
         // Combine with other anti-debug checks
-        if (anti_debug_timing()) { // Assume anti_debug_timing exists
+        if (anti_debug_timing()) {
             printf("Debugger confirmed via /proc/self/status and timing! Exiting.\n");
             exit(EXIT_FAILURE);
         } else {
@@ -49,21 +49,22 @@ void anti_debug_proc() {
     }
 }
 
-void anti_debug_timing() {
+int anti_debug_timing() {
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC, &start);
 
-    for (volatile int i = 0; i < 1000000; i++);
+    // Perform a lightweight operation
+    for (volatile int i = 0; i < 100000; i++);
 
     clock_gettime(CLOCK_MONOTONIC, &end);
-    long elapsed = (end.tv_sec - start.tv_sec) * 1000000000L + (end.tv_nsec - start.tv_nsec);
 
-    printf("Timing check elapsed: %ld ns\n", elapsed); // Debug print for verification
+    // Calculate elapsed time in nanoseconds
+    long elapsed_ns = (end.tv_sec - start.tv_sec) * 1000000000L + (end.tv_nsec - start.tv_nsec);
 
-    if (elapsed > 5000000) { // Adjusted threshold
-        printf("Debugger detected based on timing! Exiting.\n");
-        exit(EXIT_FAILURE);
-    }
+    printf("Timing check elapsed: %ld ns\n", elapsed_ns);
+
+    // Assume a debugger significantly increases elapsed time
+    return (elapsed_ns > 5000000); // Example threshold: 5 ms
 }
 
 void signal_handler(int sig) {
