@@ -47,9 +47,11 @@ void anti_debug_timing() {
     for (volatile int i = 0; i < 1000000; i++);
 
     clock_gettime(CLOCK_MONOTONIC, &end);
-    long elapsed = end.tv_nsec - start.tv_nsec;
+    long elapsed = (end.tv_sec - start.tv_sec) * 1000000000L + (end.tv_nsec - start.tv_nsec);
 
-    if (elapsed > 1000000) {
+    printf("Timing check elapsed: %ld ns\n", elapsed); // Debug print for verification
+
+    if (elapsed > 5000000) { // Adjusted threshold
         printf("Debugger detected based on timing! Exiting.\n");
         exit(EXIT_FAILURE);
     }
