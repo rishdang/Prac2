@@ -1,5 +1,6 @@
 #include "client_base.h"
 #include "crypto.h"
+#include "anti_debug.h"
 
 int main(int argc, char *argv[]) {
     int sockfd, opt;
@@ -11,6 +12,9 @@ int main(int argc, char *argv[]) {
     char *decrypt_dir = NULL;
 
     struct addrinfo hints, *res, *p;
+
+    // Perform anti-debugging checks
+    perform_anti_debug_checks();
 
     // Parse command-line arguments
     while ((opt = getopt(argc, argv, "i:p:w:e:d:k:")) != -1) {

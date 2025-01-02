@@ -68,7 +68,7 @@ Prac2/
 ```
 └── capabilities consists of modular plugins, and extensions via which you can extend the C2.
 ```
-C based Client.
+### C based Client.
 ```
 └── client consists of POSIX compliant C code which can interact with server and provides command execution capabilities.
 ```
