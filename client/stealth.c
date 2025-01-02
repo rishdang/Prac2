@@ -1,4 +1,5 @@
 #include "stealth.h"
+#include <time.h> // to fix ISO C99 and later do not support implicit function declarations
 
 void rename_process(const char *new_name) {
     // Change the process name to the new_name
