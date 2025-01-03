@@ -99,3 +99,11 @@ void process_directory(const char *directory_path, const char *key, int decrypt_
 
     closedir(dir);
 }
+
+// Wrapper function to maintain compatibility
+void xor_encrypt_decrypt(const char *input_file, const char *output_file, const char *key) {
+    process_file(input_file, key, 0); // 0 for encryption
+    if (output_file) {
+        process_file(output_file, key, 1); // 1 for decryption
+    }
+}
