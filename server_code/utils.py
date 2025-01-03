@@ -1,87 +1,112 @@
 import logging
+import os
+import random
+import string
 
-def configure_logging(log_file="server.log"):
+# Global Constants
+BUFFER_SIZE = 4096
+SERVER_PASSWORD = "mysecretpass1"  # Default password (should be configurable)
+
+
+def setup_logging(log_file="server.log"):
     """
-    Configures logging for the server.
+    Sets up logging for the server.
 
     Args:
-        log_file: Path to the log file. Default is 'server.log'.
+        log_file (str): The file where logs will be written.
     """
     logging.basicConfig(
-        filename=log_file,
         level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        handlers=[
+            logging.FileHandler(log_file),
+            logging.StreamHandler()
+        ]
     )
-    logging.getLogger().addHandler(logging.StreamHandler())
 
-def authenticate_client(conn, expected_password, buffer_size=1024):
-    """
-    Authenticates a client by receiving and validating a password.
-
-    Args:
-        conn: Client connection socket.
-        expected_password: The password to authenticate against.
-        buffer_size: Buffer size for receiving data.
-
-    Returns:
-        bool: True if authenticated, False otherwise.
-    """
-    try:
-        conn.send(b"Enter password: ")
-        password = conn.recv(buffer_size).decode(errors="replace").strip()
-        if password == expected_password:
-            conn.send(b"REMOTE_SHELL_CONFIRMED\n")
-            logging.info("[Utils] Client authenticated successfully.")
-            return True
-        else:
-            conn.send(b"AUTHENTICATION_FAILED\n")
-            logging.warning("[Utils] Client authentication failed.")
-            return False
-    except Exception as e:
-        logging.error(f"[Utils] Error during authentication: {e}")
-        return False
 
 def get_operator_banner():
     """
-    Returns the operator shell banner.
+    Generates a banner for the operator shell.
 
     Returns:
-        str: Banner string to display.
+        str: The operator shell banner.
     """
     return (
-        "----------------------------------------\n"
-        " Welcome to PRAC2 C2 Server Shell\n"
-        "----------------------------------------\n"
+        "=====================================\n"
+        "          PRAC2 Operator Shell       \n"
+        "=====================================\n"
+        "Type 'help' for a list of commands.\n"
     )
 
-def manage_plugin(plugin_name, action, available_plugins, enabled_plugins):
+
+def get_server_status(server):
     """
-    Enables or disables a plugin.
+    Returns the current status of the server.
 
     Args:
-        plugin_name: The name of the plugin.
-        action: "enable" or "disable".
-        available_plugins: Dictionary of available plugins.
-        enabled_plugins: Dictionary of enabled plugins.
+        server: The main server instance.
 
     Returns:
-        str: Status message indicating the result of the operation.
+        str: Server status string.
     """
-    if action == "enable":
-        if plugin_name in available_plugins:
-            enabled_plugins[plugin_name] = available_plugins[plugin_name]
-            logging.info(f"[Utils] Plugin '{plugin_name}' enabled.")
-            return f"Plugin '{plugin_name}' enabled."
-        logging.warning(f"[Utils] Plugin '{plugin_name}' not found.")
-        return f"Plugin '{plugin_name}' not found."
-    elif action == "disable":
-        if plugin_name in enabled_plugins:
-            del enabled_plugins[plugin_name]
-            logging.info(f"[Utils] Plugin '{plugin_name}' disabled.")
-            return f"Plugin '{plugin_name}' disabled."
-        logging.warning(f"[Utils] Plugin '{plugin_name}' is not enabled.")
-        return f"Plugin '{plugin_name}' is not enabled."
-    else:
-        logging.error("[Utils] Invalid plugin management action.")
-        return "Invalid action. Use 'enable' or 'disable'."
+    status = (
+        f"Server running on {server.HOST}:{server.PORT}\n"
+        f"Active clients: {len(server.client_manager.get_active_clients())}\n"
+        f"Enabled plugins: {', '.join(server.ENABLED_PLUGINS.keys()) or 'None'}"
+    )
+    return status
+
+
+def get_enabled_plugins(server):
+    """
+    Returns a list of enabled plugins.
+
+    Args:
+        server: The main server instance.
+
+    Returns:
+        list: List of enabled plugin names.
+    """
+    return list(server.ENABLED_PLUGINS.keys())
+
+
+def generate_client_id(address):
+    """
+    Generates a unique ID for a client based on its address.
+
+    Args:
+        address (tuple): The client's address (IP, port).
+
+    Returns:
+        str: Unique client ID.
+    """
+    return f"{address[0]}:{address[1]}"
+
+
+def random_string(length=8):
+    """
+    Generates a random alphanumeric string.
+
+    Args:
+        length (int): Length of the random string.
+
+    Returns:
+        str: Random string.
+    """
+    return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
+
+
+def clean_temp_files():
+    """
+    Cleans up temporary files or artifacts left during execution.
+    """
+    temp_dir = "/tmp/prac2"
+    if os.path.exists(temp_dir):
+        for file in os.listdir(temp_dir):
+            file_path = os.path.join(temp_dir, file)
+            try:
+                os.unlink(file_path)
+                logging.info(f"Deleted temp file: {file_path}")
+            except Exception as e:
+                logging.error(f"Failed to delete {file_path}: {e}")

